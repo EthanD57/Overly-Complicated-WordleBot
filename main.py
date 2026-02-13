@@ -2,6 +2,7 @@ from random import choice
 
 import wordle
 import display
+import simple_bot
 
 def print_menu():
     print("Welcome to The Overly-Complicated Wordle Bot!\n"
@@ -131,20 +132,21 @@ def play_game(words:set[str], word="Apple"):
 
     """
     display.print_game_start()
-    guess_count = 0
+    bot = simple_bot.WordleBot(list(words))
+    guess_count = 1
     guesses = []
+    guess = bot.make_first_guess()
     while guess_count < 5:
-        guess = str(input().lower())
-        if guess == word:
+        if guess == word: ##Correct Word Guessed
             guess_count += 1
             guesses.append([guess, score_guess(word, guess)])
             display.print_game_state(guesses)
             display.print_end_screen(word, guess_count)
             break
-        elif guess not in words:
-            print("Not a valid Word")
-        else:
-            guesses.append([guess, score_guess(word, guess)])
+        else: ##Incorrect Word Guessed. Update Game State and Send Score
+            score = score_guess(word, guess)
+            guesses.append([guess, score])
+            bot.filter_words(guess, score) ##Give the Bot Its Score for the Round
             guess_count += 1
         display.print_game_state(guesses)
     return "Game Finished. Returning to Home Screen.\n"
