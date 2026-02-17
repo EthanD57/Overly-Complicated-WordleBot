@@ -27,10 +27,10 @@ def startup(game_instance: wordle.Wordle):
         None
 
     """
-    print_menu()
-    usr_input = input()
-
+    usr_input = ""
     while usr_input != "q":
+        print_menu()
+        usr_input = input()
         if usr_input == "1":
             usr_word = handle_user_word(game_instance.word_list)
             play_game(game_instance.word_list, usr_word)
@@ -74,7 +74,9 @@ def rand_word(words: set[str]):
         str: The randomly chosen word
 
     """
-    return choice(tuple(words))
+    word = choice(tuple(words))
+    print(f"Random Word Chosen is {word}")
+    return word
 
 def score_guess(correct_word: str, guess:str) -> list[int]:
     """
@@ -135,8 +137,8 @@ def play_game(words:set[str], word="Apple"):
     bot = simple_bot.WordleBot(list(words))
     guess_count = 1
     guesses = []
-    guess = bot.make_first_guess()
-    while guess_count < 5:
+    while guess_count <= 5:
+        guess = bot.make_first_guess()
         if guess == word: ##Correct Word Guessed
             guess_count += 1
             guesses.append([guess, score_guess(word, guess)])
