@@ -3,14 +3,19 @@ from random import choice
 import wordle
 import display
 import simple_bot
+from utilities import score_guess
+
+TESTING_MODE = False
 
 def print_menu():
     print("Welcome to The Overly-Complicated Wordle Bot!\n"
-            "---------------------------------------------\n\n"
-            "Please Choose an Option:\n"
-            "1. User-Chosen Word\n"
-            "2. Randomly-Chosen Word\n"
-            "3. To Quit, Press 'q'\n")
+          "---------------------------------------------\n\n"
+          "Please Choose an Option:\n"
+          "1. User-Chosen Word\n"
+          "2. Randomly-Chosen Word\n"
+          "3. Test The Bot\n"
+          "To Quit, Enter 'q'\n")
+
 
 def startup(game_instance: wordle.Wordle):
     """
@@ -33,13 +38,35 @@ def startup(game_instance: wordle.Wordle):
         usr_input = input()
         if usr_input == "1":
             usr_word = handle_user_word(game_instance.word_list)
-            play_game(game_instance.word_list, usr_word)
+            print(play_game(game_instance.word_list, usr_word))
         elif usr_input == "2":
             rnd_word = rand_word(game_instance.word_list)
-            play_game(game_instance.word_list, rnd_word)
+            print(play_game(game_instance.word_list, rnd_word))
+        elif usr_input == "3":
+            global TESTING_MODE
+            TESTING_MODE = True
+            correct_games = 0
+            incorrect_games = 0
+            guess_counts = []
+            testing_range = int(input("How games should be ran to test the bot?\n"))
+            for x in range(testing_range):
+                rnd_word = rand_word(game_instance.word_list)
+                result = test_bot(game_instance.word_list, rnd_word)
+                if result > 0:
+                    correct_games += 1
+                    guess_counts.append(result)
+                else:
+                    incorrect_games += 1
+                if x == 0 : print("[=", end="")
+                elif x % 10 == 0: print("=", end="")
+                elif x == 99: print("]")
+            print(f"\n\nCorrect Games Percentage: {(correct_games/testing_range)*100}%")
+            print(f"Incorrect Games Percentage: {(incorrect_games/testing_range)*100}%")
+            print("Average Number of Guesses: ", round(sum(guess_counts) / len(guess_counts), 2))
         else:
             print_menu()
             usr_input = input()
+
 
 def handle_user_word(words: set[str]):
     """
@@ -63,6 +90,7 @@ def handle_user_word(words: set[str]):
         else:
             return word
 
+
 def rand_word(words: set[str]):
     """
     Returns a Random Word From The Word List
@@ -75,50 +103,11 @@ def rand_word(words: set[str]):
 
     """
     word = choice(tuple(words))
-    print(f"Random Word Chosen is {word}")
+    if not TESTING_MODE: print(f"Random Word Chosen is {word}")
     return word
 
-def score_guess(correct_word: str, guess:str) -> list[int]:
-    """
-    Scores the Guess For the Current Round.
-    Uses a two-pass algorithm to properly handle duplicate letters:
-    1. First pass: Mark exact matches (green/2)
-    2. Second pass: Mark wrong positions (yellow/1) only if letters remain available
 
-    This ensures that if a letter appears multiple times in the guess but fewer
-    times in the answer, only the appropriate number of instances get marked as
-    yellow/green (matching real Wordle behavior).
-
-    Args:
-        correct_word (str): The Correct Word for the Wordle Game
-        guess (str): The Guess From the Bot
-
-    Returns:
-        list[int]: A list containing the Score of the Correct Word
-                   2 = correct position (green)
-                   1 = wrong position (yellow)
-                   0 = not in word (gray)
-
-    """
-    result = [0] * len(guess)
-    answer_chars = list(correct_word)
-
-    # First pass: Mark exact matches and remove them from available pool
-    for i, char in enumerate(guess):
-        if char == correct_word[i]:
-            result[i] = 2
-            answer_chars[i] = None  # Mark as used
-
-    # Second pass: Mark wrong positions for remaining letters
-    for i, char in enumerate(guess):
-        if result[i] == 0:  # Not already an exact match
-            if char in answer_chars:
-                result[i] = 1
-                answer_chars[answer_chars.index(char)] = None  # Mark as used
-
-    return result
-
-def play_game(words:set[str], word="Apple"):
+def play_game(words: set[str], word=""):
     """
     The Main Game Loop Logic.
     The Bot Plays the Game and the Results of Each
@@ -135,27 +124,57 @@ def play_game(words:set[str], word="Apple"):
     """
     display.print_game_start()
     bot = simple_bot.WordleBot(list(words))
-    guess_count = 1
+    guess_count = 0
     guesses = []
-    while guess_count <= 5:
-        guess = bot.make_first_guess()
-        if guess == word: ##Correct Word Guessed
+    while guess_count < 6:
+        guess = bot.make_guess(guess_count)
+        if guess == word:  ##Correct Word Guessed
             guess_count += 1
             guesses.append([guess, score_guess(word, guess)])
             display.print_game_state(guesses)
             display.print_end_screen(word, guess_count)
-            break
-        else: ##Incorrect Word Guessed. Update Game State and Send Score
+            return ""
+        else:  ##Incorrect Word Guessed. Update Game State and Send Score
             score = score_guess(word, guess)
             guesses.append([guess, score])
-            bot.filter_words(guess, score) ##Give the Bot Its Score for the Round
+            bot.filter_words(guess, score)  ##Give the Bot Its Score for the Round
             guess_count += 1
         display.print_game_state(guesses)
-    return "Game Finished. Returning to Home Screen.\n"
+    return "Word Not Guessed :("
+
+
+def test_bot(words: set[str], word="") -> int:
+    """
+    The Main Game Loop Logic.
+    The Bot Plays the Game and the Results of Each
+    Round is Logged For a Final Score Breakdown.
+
+    Args:
+        words (set[str]): A set containing all valid words for the game
+        word (str): The Word Chosen For the Game
+
+    Returns:
+        None
+
+    """
+    bot = simple_bot.WordleBot(list(words))
+    guess_count = 0
+    guesses = []
+    while guess_count < 6:
+        guess = bot.make_guess(guess_count)
+        if guess == word:  ##Correct Word Guessed
+            guess_count += 1
+            guesses.append([guess, score_guess(word, guess)])
+            return guess_count
+        else:  ##Incorrect Word Guessed. Update Game State and Send Score
+            score = score_guess(word, guess)
+            guesses.append([guess, score])
+            bot.filter_words(guess, score)  ##Give the Bot Its Score for the Round
+            guess_count += 1
+    return 0
+
 
 if __name__ == '__main__':
     game = wordle.Wordle()
     print(f"Successfully Loaded {len(game.word_list)} Words Into The Game!\n\n")
     startup(game)
-
-
