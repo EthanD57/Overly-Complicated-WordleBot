@@ -4,6 +4,7 @@ import wordle
 import display
 import simple_bot
 from utilities import score_guess
+from multiprocessing import Pool
 
 TESTING_MODE = False
 
@@ -36,7 +37,7 @@ def _startup(game_instance: wordle.Wordle):
             global TESTING_MODE
             TESTING_MODE = True
             testing_range = int(input("How many games should be ran to test the bot?\n"))
-            _test_bot(game_instance.word_list, testing_range, game_instance)
+            _test_bot_parallel(game_instance.word_list, testing_range)
         elif usr_input == 'q': exit()
         else:
             display.print_menu()
@@ -157,10 +158,39 @@ def _test_bot(words: set[str], testing_runs: int, game_instance: wordle.Wordle):
         else: incorrect_games += 1
         guess_counts.append(guess_count)
 
-
     print(f"\n\nCorrect Games Percentage: {(correct_games / testing_runs) * 100}%")
     print(f"Incorrect Games Percentage: {(incorrect_games / testing_runs) * 100}%")
     print("Average Number of Guesses: ", round(sum(guess_counts) / len(guess_counts), 2))
+
+def _test_bot_parallel(words: set[str], testing_runs: int):
+    correct_games = 0
+    incorrect_games = 0
+    guess_counts = []
+    with Pool(processes=4) as pool:
+        args = [(_rand_word(words), words) for _ in range(testing_runs)]
+        results = pool.map(_run_single_game, args)
+        for result in results:
+            if result > 6:
+                incorrect_games += 1
+            else:
+                correct_games += 1
+                guess_counts.append(result)
+    print(f"\n\nCorrect Games Percentage: {(correct_games / testing_runs) * 100}%")
+    print(f"Incorrect Games Percentage: {(incorrect_games / testing_runs) * 100}%")
+    print("Average Number of Guesses: ", round(sum(guess_counts) / len(guess_counts), 2))
+
+def _run_single_game(args):
+    word, word_list = args
+    bot = simple_bot.WordleBot(list(word_list))
+    guess_count = 0
+    while guess_count < 6:
+        guess = bot.make_guess(guess_count)
+        if guess == word:
+            return guess_count
+        score = score_guess(word, guess)
+        bot.filter_words(guess, score)
+        guess_count += 1
+    return guess_count
 
 
 if __name__ == '__main__':

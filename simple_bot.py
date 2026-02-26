@@ -99,7 +99,8 @@ class WordleBot:
         max_entropy = -1
 
         if num_words > 20:
-            guess_candidates = self._get_high_frequency_candidates(top_n=500)
+            candidates_to_check = min(300, len(self.remaining_words) * 2)
+            guess_candidates = self._get_high_frequency_candidates(candidates_to_check)
         else:
             guess_candidates = self.master_list
 
