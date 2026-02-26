@@ -3,6 +3,16 @@ from colorama import Fore, Back, Style, init
 # Initialize colorama for Windows compatibility
 init(autoreset=True)
 
+
+def print_menu():
+    print("Welcome to The Overly-Complicated Wordle Bot!\n"
+          "---------------------------------------------\n\n"
+          "Please Choose an Option:\n"
+          "1. User-Chosen Word\n"
+          "2. Randomly-Chosen Word\n"
+          "3. Test The Bot\n"
+          "To Quit, Enter 'q'\n")
+
 def print_wordle_result(word: str, result: list[int]):
     """
     Print a Wordle guess with colored output.
