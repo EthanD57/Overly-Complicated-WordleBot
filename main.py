@@ -45,24 +45,8 @@ def startup(game_instance: wordle.Wordle):
         elif usr_input == "3":
             global TESTING_MODE
             TESTING_MODE = True
-            correct_games = 0
-            incorrect_games = 0
-            guess_counts = []
             testing_range = int(input("How games should be ran to test the bot?\n"))
-            for x in range(testing_range):
-                rnd_word = rand_word(game_instance.word_list)
-                result = test_bot(game_instance.word_list, rnd_word)
-                if result > 0:
-                    correct_games += 1
-                    guess_counts.append(result)
-                else:
-                    incorrect_games += 1
-                if x == 0 : print("[=", end="")
-                elif x % 10 == 0: print("=", end="")
-                elif x == 99: print("]")
-            print(f"\n\nCorrect Games Percentage: {(correct_games/testing_range)*100}%")
-            print(f"Incorrect Games Percentage: {(incorrect_games/testing_range)*100}%")
-            print("Average Number of Guesses: ", round(sum(guess_counts) / len(guess_counts), 2))
+            test_bot(game_instance.word_list, testing_range, game_instance)
         else:
             print_menu()
             usr_input = input()
@@ -143,7 +127,7 @@ def play_game(words: set[str], word=""):
     return "Word Not Guessed :("
 
 
-def test_bot(words: set[str], word="") -> int:
+def test_bot(words: set[str], testing_runs: int, game_instance: wordle.Wordle):
     """
     The Main Game Loop Logic.
     The Bot Plays the Game and the Results of Each
@@ -151,27 +135,35 @@ def test_bot(words: set[str], word="") -> int:
 
     Args:
         words (set[str]): A set containing all valid words for the game
-        word (str): The Word Chosen For the Game
+        testing_runs (int): The number of testing runs the bot should do
+        game_instance (wordle.Wordle): The game instance used in testing
 
     Returns:
         None
 
     """
-    bot = simple_bot.WordleBot(list(words))
-    guess_count = 0
-    guesses = []
-    while guess_count < 6:
-        guess = bot.make_guess(guess_count)
-        if guess == word:  ##Correct Word Guessed
-            guess_count += 1
-            guesses.append([guess, score_guess(word, guess)])
-            return guess_count
-        else:  ##Incorrect Word Guessed. Update Game State and Send Score
-            score = score_guess(word, guess)
-            guesses.append([guess, score])
-            bot.filter_words(guess, score)  ##Give the Bot Its Score for the Round
-            guess_count += 1
-    return 0
+    correct_games = 0
+    incorrect_games = 0
+    guess_counts = []
+    for x in range(testing_runs):
+        word = rand_word(game_instance.word_list)
+        bot = simple_bot.WordleBot(list(words))
+        guess_count = 0
+        guesses = []
+        while guess_count < 6:
+            guess = bot.make_guess(guess_count)
+            if guess == word:  ##Correct Word Guessed
+                guess_count += 1
+                guesses.append([guess, score_guess(word, guess)])
+            else:  ##Incorrect Word Guessed. Update Game State and Send Score
+                score = score_guess(word, guess)
+                guesses.append([guess, score])
+                bot.filter_words(guess, score)  ##Give the Bot Its Score for the Round
+                guess_count += 1
+
+    print(f"\n\nCorrect Games Percentage: {(correct_games / testing_runs) * 100}%")
+    print(f"Incorrect Games Percentage: {(incorrect_games / testing_runs) * 100}%")
+    print("Average Number of Guesses: ", round(sum(guess_counts) / len(guess_counts), 2))
 
 
 if __name__ == '__main__':
