@@ -8,6 +8,7 @@ from multiprocessing import Pool
 
 TESTING_MODE = False
 
+
 def _startup(game_instance: wordle.Wordle):
     """
     Initialize The Wordle Game According to User Input
@@ -130,7 +131,7 @@ def _test_bot_parallel(words: set[str], testing_runs: int):
         args = [(_rand_word(words), words) for _ in range(testing_runs)]
         results = pool.map(_run_single_game, args)
         for result in results:
-            if result > 6:
+            if result > 5:
                 incorrect_games += 1
             else:
                 correct_games += 1
