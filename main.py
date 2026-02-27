@@ -28,7 +28,7 @@ def _startup(game_instance: wordle.Wordle):
         display.print_menu()
         usr_input = input()
         if usr_input == "1":
-            usr_word = _handle_user_word(game_instance.word_list)
+            usr_word = _handle_user_word(game_instance)
             print(_play_game(game_instance.word_list, usr_word))
         elif usr_input == "2":
             rnd_word = _rand_word(game_instance.word_list)
@@ -38,31 +38,34 @@ def _startup(game_instance: wordle.Wordle):
             TESTING_MODE = True
             testing_range = int(input("How many games should be ran to test the bot?\n"))
             _test_bot_parallel(game_instance.word_list, testing_range)
+            exit()
         elif usr_input == 'q': exit()
         else:
             display.print_menu()
             usr_input = input()
 
 
-def _handle_user_word(words: set[str]):
+def _handle_user_word(instance: wordle.Wordle):
     """
     Takes In User Input for Word Selection and
-    Ensures it is Within the Word List
+    Ensures it is 5 Characters Long
 
     Args:
-        words (set[str]): A set containing all valid words for the game
+        instance (wordle.Wordle): The game instance to pull the word list from
 
     Returns:
         str: The word chosen by the user
 
     """
     while True:
-        word = str(input("Enter A 5-Letter Word, or Enter 'q' to Quit\n")).lower()
+        word = str(input("Enter A 5-Letter Word, or Enter 'q' to Quit\n")).lower().strip()
         if word == "q":
             exit()
-        elif word not in words:
-            print("Invalid Word. Please Enter A New Word, or Enter 'q' to Quit\n")
+        elif len(word) > 5 or len(word) < 5:
             continue
+        elif word not in instance.word_list:
+            instance.word_list.add(word)
+            return word
         else:
             return word
 
@@ -119,49 +122,6 @@ def _play_game(words: set[str], word=""):
     return "Word Not Guessed :("
 
 
-def _test_bot(words: set[str], testing_runs: int, game_instance: wordle.Wordle):
-    """
-    The Main Game Loop Logic.
-    The Bot Plays the Game and the Results of Each
-    Round is Logged For a Final Score Breakdown.
-
-    Args:
-        words (set[str]): A set containing all valid words for the game
-        testing_runs (int): The number of testing runs the bot should do
-        game_instance (wordle.Wordle): The game instance used in testing
-
-    Returns:
-        None
-
-    """
-    correct_games = 0
-    incorrect_games = 0
-    guess_counts = []
-    for x in range(testing_runs):
-        word = _rand_word(game_instance.word_list)
-        bot = simple_bot.WordleBot(list(words))
-        guess_count = 0
-        guesses = []
-        solved = False
-        while guess_count < 6:
-            guess = bot.make_guess(guess_count)
-            if guess == word:  ##Correct Word Guessed
-                guess_count += 1
-                guesses.append([guess, score_guess(word, guess)])
-                solved = True
-            else:  ##Incorrect Word Guessed. Update Game State and Send Score
-                score = score_guess(word, guess)
-                guesses.append([guess, score])
-                bot.filter_words(guess, score)  ##Give the Bot Its Score for the Round
-                guess_count += 1
-        if solved: correct_games += 1
-        else: incorrect_games += 1
-        guess_counts.append(guess_count)
-
-    print(f"\n\nCorrect Games Percentage: {(correct_games / testing_runs) * 100}%")
-    print(f"Incorrect Games Percentage: {(incorrect_games / testing_runs) * 100}%")
-    print("Average Number of Guesses: ", round(sum(guess_counts) / len(guess_counts), 2))
-
 def _test_bot_parallel(words: set[str], testing_runs: int):
     correct_games = 0
     incorrect_games = 0
@@ -178,6 +138,7 @@ def _test_bot_parallel(words: set[str], testing_runs: int):
     print(f"\n\nCorrect Games Percentage: {(correct_games / testing_runs) * 100}%")
     print(f"Incorrect Games Percentage: {(incorrect_games / testing_runs) * 100}%")
     print("Average Number of Guesses: ", round(sum(guess_counts) / len(guess_counts), 2))
+
 
 def _run_single_game(args):
     word, word_list = args
