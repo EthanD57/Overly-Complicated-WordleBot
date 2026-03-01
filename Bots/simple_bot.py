@@ -1,6 +1,6 @@
 import math
 from collections import defaultdict, Counter
-from utilities import score_guess
+from Utilities.score_guess import score_guess
 
 
 class WordleBot:
@@ -8,6 +8,7 @@ class WordleBot:
         self.master_list = word_list
         self.remaining_words = word_list
         self.seen_scores = {}
+        self.scored_rounds = {}
 
     def _get_score(self, answer: str, guess: str) -> tuple:
         """
@@ -143,6 +144,7 @@ class WordleBot:
         letter_max_count = {}  # Maximum times a letter can appear
         position_requirements = {}  # pos -> letter (green: must be at this position)
         position_exclusions = defaultdict(set)  # pos -> {letters} (yellow: can't be at this position)
+        self.scored_rounds[guess] = result
 
         for pos, (letter, score) in enumerate(zip(guess, result)):
             if score == 2:  # Green - letter is in the correct position

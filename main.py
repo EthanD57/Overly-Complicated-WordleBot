@@ -1,9 +1,9 @@
 from random import choice
 
 import wordle
-import display
-import simple_bot
-from utilities import score_guess
+from Utilities import display
+from Bots import simple_bot
+from Utilities.score_guess import score_guess
 from multiprocessing import Pool
 
 TESTING_MODE = False
