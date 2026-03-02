@@ -26,7 +26,7 @@ class WordleBot:
             self.seen_scores[pair] = tuple(score_guess(answer, guess))
         return self.seen_scores[pair]
 
-    def _get_high_frequency_candidates(self, top_n=300) -> list:
+    def get_high_frequency_candidates(self, top_n=300) -> list:
         """
         Get words with the highest letter frequency in remaining words
 
@@ -52,7 +52,7 @@ class WordleBot:
         scored_candidates.sort(reverse=True)
         return [word for _, word in scored_candidates[:top_n]]
 
-    def _calculate_entropy(self, word: str) -> float:
+    def calculate_entropy(self, word: str) -> float:
         """
         Calculates the entropy of a given word
 
@@ -101,12 +101,12 @@ class WordleBot:
 
         if num_words > 20:
             candidates_to_check = min(300, len(self.remaining_words) * 2)
-            guess_candidates = self._get_high_frequency_candidates(candidates_to_check)
+            guess_candidates = self.get_high_frequency_candidates(candidates_to_check)
         else:
             guess_candidates = self.master_list
 
         for word in guess_candidates:
-            entropy = self._calculate_entropy(word)
+            entropy = self.calculate_entropy(word)
 
             if word in self.remaining_words:  #This acts as a tiebreaker because we would PREFER to guess a word
                 entropy += 0.01  #that could actually be the answer. So if both are high-entropy, pick one
