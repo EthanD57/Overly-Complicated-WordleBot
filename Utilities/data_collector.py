@@ -1,53 +1,12 @@
-import time
+
 from multiprocessing import Pool
-from pathlib import Path
 from random import choice
 import numpy as np
-from collections import Counter
-from ML.entropy_maximization_bot import EntropyBot
-import wordle
-from Utilities.score_guess import score_guess
-from ML import entropy_maximization_bot
 import pickle
 
-
-def main():
-    path = Path('../words.txt')
-    game = wordle.Wordle(path)
-    collector = TrainingDataCollector(list(game.word_list))
-
-    start_time = time.time()
-    print("Collecting data from 1000 games...")
-    collector.collect_training_data_parallel(num_games=1000, k=10, processes=8)
-    stop_time = time.time()
-
-    print(f"Time taken: {stop_time - start_time}")
-    print(f"Collected {len(collector.training_data)} training examples")
-    print(f"Feature shape: {collector.training_data[0][0].shape}")
-    print(f"Label shape: {collector.training_data[0][1].shape}")
-
-
-def calculate_normalized_letter_freq(remaining_words: list[str]):
-    """
-        Extract normalized letter frequency from remaining words
-
-    Returns:
-        np.array: An array containing normalized frequencies of all letters
-
-    """
-    # Count letter frequencies in remaining words
-    letter_freq = Counter()
-    for word in remaining_words:
-        for letter in set(word):
-            letter_freq[letter] += 1
-
-    # Create array for a-z, normalized
-    frequencies = np.zeros(26)
-    total_words = len(remaining_words) if remaining_words else 1
-    for letter in 'abcdefghijklmnopqrstuvwxyz':
-        frequencies[ord(letter) - ord('a')] = letter_freq[letter] / total_words
-
-    return frequencies
+from ML.entropy_maximization_bot import EntropyBot
+from ML import entropy_maximization_bot
+from Utilities.shared_utils import calculate_normalized_letter_freq, score_guess, get_high_frequency_candidates
 
 
 def create_training_labels(bot: entropy_maximization_bot.EntropyBot, k: int):
@@ -63,11 +22,11 @@ def create_training_labels(bot: entropy_maximization_bot.EntropyBot, k: int):
         np.array: An array of letter labels weights floats
     """
 
-    if len(bot.remaining_words) > 20:   #The entropy function is super costly, so we're guess_candidates
-        candidates_to_check = min(300, len(bot.remaining_words) * 2)
-        guess_candidates = bot.get_high_frequency_candidates(candidates_to_check)
+    if len(bot.game_state.remaining_words) > 20:   #The entropy function is super costly, so we're guess_candidates
+        candidates_to_check = min(300, len(bot.game_state.remaining_words) * 2)
+        guess_candidates = get_high_frequency_candidates(bot.game_state, candidates_to_check)
     else:
-        guess_candidates = bot.master_list
+        guess_candidates = bot.game_state.master_list
 
     word_entropies = []
     for word in guess_candidates:   #Get the word entropies from the bot
@@ -94,12 +53,12 @@ class TrainingDataCollector:
             np.array: Feature vector representing the current state
         """
 
-        letter_frequencies= calculate_normalized_letter_freq(bot.remaining_words)
+        letter_frequencies= calculate_normalized_letter_freq(bot.game_state.remaining_words)
         green_letters = np.zeros((5, 26), dtype=int)
         yellow_letters = np.zeros((5, 26), dtype=int)
         gray_letters = np.zeros(26, dtype=int)
 
-        for guess, score in bot.scored_rounds.items():
+        for guess, score in bot.game_state.scored_rounds.items():
             for pos, (letter, result) in enumerate(zip(guess, score)):
                 letter_idx = ord(letter) - ord('a')
                 if result == 2:  #If the letter is green, mark that position as green in the character's array
@@ -114,7 +73,7 @@ class TrainingDataCollector:
             green_letters.flatten(),  # 130 values (5×26)
             yellow_letters.flatten(),  # 130 values (5×26)
             gray_letters,  # 26 values
-            [len(bot.remaining_words) / len(self.word_list)],  # 1 value
+            [len(bot.game_state.remaining_words) / len(self.word_list)],  # 1 value
             [guess_count]  # 1 value
         ])
 
@@ -133,8 +92,8 @@ class TrainingDataCollector:
         num_games, k, word_list = args
 
         for x in range(num_games):
-            bot = EntropyBot(self.word_list)
-            target_word = choice(bot.remaining_words)
+            bot = EntropyBot(word_list)
+            target_word = choice(bot.game_state.remaining_words)
             guess_count = 0
 
             while guess_count < 6:
@@ -149,7 +108,7 @@ class TrainingDataCollector:
                     break
 
                 score = score_guess(target_word, bot_guess)
-                bot.filter_words(bot_guess, score)
+                filter_words(bot_guess, score, bot.game_state)
                 guess_count += 1
 
         return training_data

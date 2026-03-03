@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-from collections import Counter, defaultdict
+from collections import Counter
 import numpy as np
 import joblib
-from pathlib import Path
+
+from Utilities.data_collector import calculate_normalized_letter_freq
 from Utilities.game_state import GameState
 
 class BaseWordleModel(ABC):
@@ -24,6 +25,7 @@ class BaseWordleModel(ABC):
         # Actual model (RandomForest, Neural Net, etc.) goes here
         self._model = None
         self.game_state = GameState(word_list)
+
 
     @staticmethod
     def engineer_features(game_state: GameState) -> np.ndarray:
@@ -48,7 +50,21 @@ class BaseWordleModel(ABC):
         - Remaining word count
         - Guess number
         """
-        pass
+
+        letter_frequencies = calculate_normalized_letter_freq(game_state.remaining_words)
+        game_state.update_constraints()
+
+        features = np.concatenate([
+            letter_frequencies,  # 26 values
+            np.array(game_state.green_letters.flatten()),  # 130 values (5×26)
+            np.array(game_state.yellow_letters),
+            np.array(game_state.gray_letters),  # 26 values
+            [len(game_state.remaining_words) / len(game_state.master_list)],  # 1 value
+            [game_state.guess_count]  # 1 value
+        ])
+
+        return features
+
 
     @abstractmethod
     def train(self, X: np.ndarray, y: np.ndarray) -> None:
@@ -60,6 +76,7 @@ class BaseWordleModel(ABC):
             y: Shape (num_samples, 26) - soft labels for each letter
         """
         pass
+
 
     @abstractmethod
     def predict(self, game_state: GameState) -> np.ndarray:
@@ -76,6 +93,7 @@ class BaseWordleModel(ABC):
         """
         pass
 
+
     @abstractmethod
     def make_guess(self) -> str:
         """
@@ -87,81 +105,6 @@ class BaseWordleModel(ABC):
         """
     pass
 
-    def filter_words(self, guess: str, result: list[int]):
-        """
-        Filters the words based off the score response from the game.
-
-        Uses a two-pass algorithm that first collects all the requirements from the score.
-
-        Gray indicates a hard-limit of a given character in answer.
-        Yellow indicates a hard-minimum of a given character in an answer.
-        Green indicates the exact position that a letter must appear.
-
-        The second pass filters the remaining word list to only contain words that match all
-        the rules from the first pass.
-
-        Args:
-            guess (str): The guessed answer
-            result (list[int]): The score response from the game
-
-        Returns:
-            None
-
-        """
-        # First pass: collect all requirements from the guess
-        letter_min_count = defaultdict(int)  # Minimum times a letter must appear
-        letter_max_count = {}  # Maximum times a letter can appear
-        position_requirements = {}  # pos -> letter (green: must be at this position)
-        position_exclusions = defaultdict(set)  # pos -> {letters} (yellow: can't be at this position)
-
-        for pos, (letter, score) in enumerate(zip(guess, result)):
-            if score == 2:  # Green - letter is in the correct position
-                letter_min_count[letter] += 1
-                position_requirements[pos] = letter
-            elif score == 1:  # Yellow - letter is in word but wrong position
-                letter_min_count[letter] += 1
-                position_exclusions[pos].add(letter)
-            else:  # Gray - letter is not in word, OR we've found all instances
-                # Count how many times this letter appears as green/yellow in the entire guess
-                green_yellow_count = sum(1 for l, s in zip(guess, result) if l == letter and s in [1, 2])
-                if green_yellow_count > 0:
-                    # Letter appears exactly this many times (no more)
-                    letter_max_count[letter] = green_yellow_count
-                else:
-                    # Letter not in word at all
-                    letter_max_count[letter] = 0
-
-        # Second pass: filter words based on all requirements
-        filtered_words = []
-        for word in self.game_state.remaining_words:
-            # Check position requirements (green letters must be in correct spots)
-            if not all(word[pos] == letter for pos, letter in position_requirements.items()):
-                continue
-
-            # Check position exclusions (yellow letters can't be in certain positions)
-            if any(word[pos] in excluded_letters for pos, excluded_letters in position_exclusions.items()):
-                continue
-
-            # Check minimum letter counts (green + yellow letters must appear at least this many times)
-            valid = True
-            for letter, min_count in letter_min_count.items():
-                if word.count(letter) < min_count:
-                    valid = False
-                    break
-
-            if not valid:
-                continue
-
-            # Check maximum letter counts (gray letters limit the count)
-            for letter, max_count in letter_max_count.items():
-                if word.count(letter) > max_count:
-                    valid = False
-                    break
-
-            if valid:
-                filtered_words.append(word)
-
-        self.game_state.remaining_words = filtered_words
 
     def save(self, filepath: str) -> None:
         """Save trained model to disk using joblib."""
@@ -169,37 +112,15 @@ class BaseWordleModel(ABC):
             raise ValueError("Cannot save untrained model")
         joblib.dump(self, filepath)
 
+
     @staticmethod
     def load(filepath: str) -> 'BaseWordleModel':
         """Load trained model from disk."""
         return joblib.load(filepath)
 
+
     def update_game_state(self) -> None:
         """Update game state constraints after filtering words."""
         self.game_state.update_constraints()
 
-    def get_high_frequency_candidates(self, top_n=300) -> list:
-        """
-        Get words with the highest letter frequency in remaining words
 
-        Args:
-            top_n (int): The amount of words the function should return
-
-        Returns:
-            List: The list of words composed of the most common letters
-
-        """
-        # Count letter frequencies in remaining words
-        letter_freq = Counter()
-        for word in self.game_state.remaining_words:
-            for letter in set(word):
-                letter_freq[letter] += 1
-
-        # Score each candidate word by how many high-frequency letters it has
-        scored_candidates = []
-        for word in self.game_state.remaining_words:
-            score = sum(letter_freq[letter] for letter in set(word))
-            scored_candidates.append((score, word))
-
-        scored_candidates.sort(reverse=True)
-        return [word for _, word in scored_candidates[:top_n]]

@@ -1,10 +1,13 @@
+import time
 from pathlib import Path
 from random import choice
 import wordle
 from Utilities import display
 from ML import entropy_maximization_bot
-from Utilities.score_guess import score_guess
 from multiprocessing import Pool
+
+from Utilities.data_collector import TrainingDataCollector
+from Utilities.shared_utils import filter_words, score_guess
 
 TESTING_MODE = False
 
@@ -37,13 +40,34 @@ def _startup(game_instance: wordle.Wordle):
         elif usr_input == "3":
             global TESTING_MODE
             TESTING_MODE = True
-            testing_range = int(input("How many games should be ran to test the bot?\n"))
+            while True:
+                testing_range = input("How many games should be ran to test the bot?\n").strip()
+                try:
+                    testing_range = int(testing_range)
+                    break
+                except ValueError:
+                    print("Please Enter an Integer")
             _test_bot_parallel(game_instance.word_list, testing_range)
+            exit()
+        elif usr_input == "4":
+            while True:
+                testing_range = input("How many games would you like the bot to generate? "
+                                      "Enter an Integer (1000-10000 Suggested\n")
+                processes = input("How many parallel processes would you like to use? "
+                                  "Enter an Integer (1-8 Suggested)\n")
+                try:
+                    testing_range = int(testing_range)
+                    processes = int(processes)
+                    break
+                except ValueError:
+                    print("Non-Integer Entered")
+            _gather_testing_date(game_instance, testing_range, processes)
             exit()
         elif usr_input == 'q': exit()
         else:
             display.print_menu()
             usr_input = input()
+
 
 
 def _handle_user_word(instance: wordle.Wordle):
@@ -117,7 +141,8 @@ def _play_game(words: set[str], word=""):
         else:  ##Incorrect Word Guessed. Update Game State and Send Score
             score = score_guess(word, guess)
             guesses.append([guess, score])
-            bot.filter_words(guess, score)  ##Give the Bot Its Score for the Round
+            ##Give the Bot Its Score for the Round
+            filter_words(guess, score, bot.game_state)
             guess_count += 1
         display.print_game_state(guesses)
     return "Word Not Guessed :("
@@ -150,9 +175,22 @@ def _run_single_game(args):
         if guess == word:
             return guess_count
         score = score_guess(word, guess)
-        bot.filter_words(guess, score)
+        filter_words(guess, score, bot.game_state)
         guess_count += 1
     return guess_count
+
+def _gather_testing_date(game_instance: wordle.Wordle, game_count, process_count):
+    collector = TrainingDataCollector(list(game_instance.word_list))
+
+    start_time = time.time()
+    print(f"Collecting data from {game_count} games...")
+    collector.collect_training_data_parallel(num_games= game_count, k= 10, processes= process_count)
+    stop_time = time.time()
+
+    print(f"Time taken: {stop_time - start_time}")
+    print(f"Collected {len(collector.training_data)} training examples")
+    print(f"Feature shape: {collector.training_data[0][0].shape}")
+    print(f"Label shape: {collector.training_data[0][1].shape}")
 
 
 if __name__ == '__main__':
