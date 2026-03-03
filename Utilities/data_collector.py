@@ -1,19 +1,29 @@
+from pathlib import Path
 from random import choice
 import numpy as np
 from collections import defaultdict, Counter
+import wordle
 from Utilities.score_guess import score_guess
-import main
-from Bots import simple_bot
-import Utilities
+from ML import entropy_maximization_bot
 import pickle
 
+def main():
+    game = wordle.Wordle()
+    collector = TrainingDataCollector(list(game.word_list))
+
+    print("Collecting data from 10 games...")
+    collector.collect_training_data(num_games=10000, k=10)
+
+    print(f"Collected {len(collector.training_data)} training examples")
+    print(f"Feature shape: {collector.training_data[0][0].shape}")
+    print(f"Label shape: {collector.training_data[0][1].shape}")
 
 class TrainingDataCollector:
     def __init__(self, word_list: list[str]):
         self.word_list = word_list
         self.training_data = []
 
-    def extract_features(self, bot: simple_bot.WordleBot, guess_count: int) -> np.array:
+    def extract_features(self, bot: entropy_maximization_bot.EntropyBot, guess_count: int) -> np.array:
         """
         Extract features from current game state.
 
@@ -70,14 +80,14 @@ class TrainingDataCollector:
 
         return frequencies
 
-    def create_training_labels(self, bot: simple_bot.WordleBot, k: int):
+    def create_training_labels(self, bot: entropy_maximization_bot.EntropyBot, k: int):
         """
         This function looks at the current state of the bot, find the top K-highest entropy
         words in the remaining words and then returns label weights for each letter in those words
 
         Args:
             k: The number of words to pull from the entropy list
-            bot (simple_bot.WordleBot): The bot that contains the remaining word list and round history
+            bot (entropy_maximization_bot.EntropyBot): The bot that contains the remaining word list and round history
 
         Returns:
             np.array: An array of letter labels weights floats
@@ -109,7 +119,7 @@ class TrainingDataCollector:
             k: Number of top entropy words to use for labels
         """
         for x in range(num_games):
-            bot = simple_bot.WordleBot(self.word_list)
+            bot = entropy_maximization_bot.EntropyBot(self.word_list)
             target_word = choice(bot.remaining_words)
             guess_count = 0
 
@@ -126,5 +136,7 @@ class TrainingDataCollector:
                 bot.filter_words(bot_guess, score)
                 guess_count += 1
 
-        with open("Bots/training_data/wordle_training.pkl", 'wb') as f:
+        training_data_path = Path("../ML/training_data/wordle_training_data.txt")
+        with open(training_data_path, 'wb') as f:
             pickle.dump(self.training_data, f)
+

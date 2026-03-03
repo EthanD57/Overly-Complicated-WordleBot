@@ -3,7 +3,7 @@ from collections import defaultdict, Counter
 from Utilities.score_guess import score_guess
 
 
-class WordleBot:
+class EntropyBot:
     def __init__(self, word_list: list[str]):
         self.master_list = word_list
         self.remaining_words = word_list

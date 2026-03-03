@@ -1,8 +1,8 @@
+from pathlib import Path
 from random import choice
-
 import wordle
 from Utilities import display
-from Bots import simple_bot
+from ML import entropy_maximization_bot
 from Utilities.score_guess import score_guess
 from multiprocessing import Pool
 
@@ -103,7 +103,7 @@ def _play_game(words: set[str], word=""):
 
     """
     display.print_game_start()
-    bot = simple_bot.WordleBot(list(words))
+    bot = entropy_maximization_bot.EntropyBot(list(words))
     guess_count = 0
     guesses = []
     while guess_count < 6:
@@ -143,7 +143,7 @@ def _test_bot_parallel(words: set[str], testing_runs: int):
 
 def _run_single_game(args):
     word, word_list = args
-    bot = simple_bot.WordleBot(list(word_list))
+    bot = entropy_maximization_bot.EntropyBot(list(word_list))
     guess_count = 0
     while guess_count < 6:
         guess = bot.make_guess(guess_count)
@@ -156,6 +156,7 @@ def _run_single_game(args):
 
 
 if __name__ == '__main__':
-    game = wordle.Wordle()
+    word_list_path = Path("words.txt")
+    game = wordle.Wordle(word_list_path)
     print(f"Successfully Loaded {len(game.word_list)} Words Into The Game!\n\n")
     _startup(game)
