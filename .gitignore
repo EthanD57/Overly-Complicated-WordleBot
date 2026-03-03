@@ -251,3 +251,5 @@ http-client.private.env.json
 /.idea/modules.xml
 /.idea/vcs.xml
 /.idea/WordleBot.iml
+!/.venv/
+!/.venv/
