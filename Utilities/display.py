@@ -11,6 +11,7 @@ def print_menu():
           "1. User-Chosen Word\n"
           "2. Randomly-Chosen Word\n"
           "3. Test The Bot\n"
+          "4. Generate Training Data\n"
           "To Quit, Enter 'q'\n")
 
 def print_wordle_result(word: str, result: list[int]):
