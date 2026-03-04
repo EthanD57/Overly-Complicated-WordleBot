@@ -1,11 +1,10 @@
 import pickle
-
 import numpy as np
 from numpy import ndarray
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.multioutput import MultiOutputClassifier
 
 from ML.base_model import BaseWordleModel
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.multioutput import MultiOutputClassifier
 from Utilities.game_state import GameState
 
 
@@ -16,6 +15,7 @@ class RandomForestBot(BaseWordleModel):
         # Initialize sklearn RandomForestClassifier with defaults for now
         #IF the performance is bad, I'll adjust this
         self._model = RandomForestClassifier()
+
 
     def train(self) -> None:
         """
@@ -52,6 +52,7 @@ class RandomForestBot(BaseWordleModel):
                 best_score = score
 
         return best_word
+
 
     def predict(self, game_state: GameState) -> ndarray:
         """

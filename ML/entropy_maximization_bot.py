@@ -10,7 +10,6 @@ class EntropyBot:
         self.game_state = GameState(word_list)
         self.seen_scores = {}
 
-
     def _get_score(self, answer: str, guess: str) -> tuple:
         """
         Cached version of score_guess for speed
@@ -26,7 +25,6 @@ class EntropyBot:
         if pair not in self.seen_scores:
             self.seen_scores[pair] = tuple(score_guess(answer, guess))
         return self.seen_scores[pair]
-
 
     def calculate_entropy(self, word: str) -> float:
         """
@@ -54,6 +52,7 @@ class EntropyBot:
 
         return entropy
 
+
     def make_guess(self) -> str:
         """
         Make a Guess That Maximizes Entropy in Order to Shrink the Remaining Word List as Much as Possible
@@ -63,25 +62,29 @@ class EntropyBot:
             str: The Bot's guess for that round
 
         """
-        self.game_state.guess_count += 1 #Increment the GameState guess count
 
-        if self.game_state.guess_count == 0: return "crane"
-        num_words = len(self.game_state.remaining_words)
+        if self.game_state.guess_count == 0:
+            self.game_state.guess_count += 1  # Increment the GameState guess count
+            return "crane"
+        remaining_words_length = len(self.game_state.remaining_words)
 
-        if num_words == 1:  #No entropy calculations for just 1 word
+
+        if remaining_words_length == 1:  #No entropy calculations for just 1 word
             return self.game_state.remaining_words[0]
 
         best_word = ""
         max_entropy = -1
 
-        if num_words > 20:
-            candidates_to_check = min(300, len(self.game_state.remaining_words) * 2)
-            guess_candidates = get_high_frequency_candidates(self.game_state, candidates_to_check)
+        #If we have a lot of possible words, we just check the top 300 words with high-frequency letters
+        if remaining_words_length > 20:
+            guess_candidates = get_high_frequency_candidates(self.game_state, 300, self.game_state.master_list)
         else:
+            #Below 20 remaining words is dangerous because we can get stuck in traps like LIGHT, MIGHT, SIGHT, etc.
+            #To combat this, we allow the bot to make a sacrificial guess like "MILES" to rule out LIGHT, MIGHT, and SIGHT
             guess_candidates = self.game_state.master_list
 
         for word in guess_candidates:
-            entropy = self.calculate_entropy(word)
+            entropy = self.calculate_entropy_pattern_table(word)
 
             if word in self.game_state.remaining_words:  #This acts as a tiebreaker because we would PREFER to guess a word
                 entropy += 0.01  #that could actually be the answer. So if both are high-entropy, pick one
@@ -92,4 +95,3 @@ class EntropyBot:
                 best_word = word
 
         return best_word
-

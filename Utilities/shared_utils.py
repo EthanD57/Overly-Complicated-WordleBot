@@ -1,8 +1,6 @@
 from collections import Counter, defaultdict
-
-import numpy as np
-
 from Utilities.game_state import GameState
+import numpy as np
 
 
 def calculate_normalized_letter_freq(remaining_words: list[str]):
@@ -152,18 +150,22 @@ def filter_words(guess: str, result: list[int], game_state: GameState):
     game_state.remaining_words = filtered_words
 
 
-def get_high_frequency_candidates(game_state: GameState, top_n=300) -> list:
+def get_high_frequency_candidates(game_state: GameState, top_n=300, candidate_pool: list = None) -> list:
     """
     Get words with the highest letter frequency in remaining words
 
     Args:
         game_state (GameState): GameState object representing the current game state for the bot
         top_n (int): The amount of words the function should return
+        candidate_pool (list): The pool of words to score and rank. Defaults to remaining_words.
 
     Returns:
         List: The list of words composed of the most common letters
 
     """
+    if candidate_pool is None:
+        candidate_pool = game_state.remaining_words
+
     # Count letter frequencies in remaining words
     letter_freq = Counter()
     for word in game_state.remaining_words:
@@ -172,7 +174,7 @@ def get_high_frequency_candidates(game_state: GameState, top_n=300) -> list:
 
     # Score each candidate word by how many high-frequency letters it has
     scored_candidates = []
-    for word in game_state.remaining_words:
+    for word in candidate_pool:
         score = sum(letter_freq[letter] for letter in set(word))
         scored_candidates.append((score, word))
 
@@ -213,3 +215,19 @@ def extract_features(game_state: GameState):
     ])
 
     return features
+
+def calculate_entropy_pattern_table(all_words_matrix: np.array):
+    """
+    Uses batched scoring to precompute entropy pattern table for extensive training data generation
+
+    Args:
+        #TODO: args for the function and descriptions
+
+    Returns:
+        #TODO: Pattern table name and description
+
+    """
+    for i, guess in enumerate(word_list):
+        matrix[i, :] = batch_scoring(guess, all_words_matrix)
+
+    pass

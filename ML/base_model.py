@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-
-import joblib
 import numpy as np
+import joblib
 
 from Utilities.game_state import GameState
 from Utilities.shared_utils import extract_features
@@ -89,6 +88,7 @@ class BaseWordleModel(ABC):
 
         """
     pass
+
 
     def save(self, filepath: str, keep_game_state: bool) -> None:
         """Save trained model to disk using joblib."""

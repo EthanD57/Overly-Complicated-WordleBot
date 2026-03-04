@@ -12,3 +12,5 @@ class Wordle:
             print(f"An unexpected error occurred while loading words.txt: {e}")
             exit()
 
+        self.needRecompute = True
+

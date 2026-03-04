@@ -8,6 +8,7 @@ class GameState:
         self.yellow_letters = set()
         self.scored_rounds = dict()
 
+
     def reset(self) -> None:
         self.remaining_words = self.master_list
         self.guess_count = 0

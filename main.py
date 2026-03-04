@@ -1,15 +1,15 @@
 import time
-from multiprocessing import Pool
 from pathlib import Path
 from random import choice
-
+import wordle
+from multiprocessing import Pool
 import click
 
-import wordle
-from ML import entropy_maximization_bot, random_forest
-from Utilities import display
 from Utilities.data_collector import TrainingDataCollector
 from Utilities.shared_utils import filter_words, score_guess
+from ML import entropy_maximization_bot, random_forest
+from Utilities import display
+
 
 TESTING_MODE = False
 
@@ -30,36 +30,35 @@ def _startup(game_instance: wordle.Wordle):
     model = 1
     while True:
         display.print_menu()
-        usr_input = click.prompt("Please Choose an Option", type=click.Choice(["1", "2", "3", "4", "5", "q"]),
-                                 show_choices=False)
-        if usr_input == "1":  # User-Chosen Word
+        usr_input = click.prompt("Please Choose an Option", type = click.Choice(["1", "2", "3", "4", "5", "q"]), show_choices=False)
+        if usr_input == "1":        #User-Chosen Word
             usr_word = _handle_user_word(game_instance)
             print(_play_game(game_instance.word_list, model, usr_word))
-        elif usr_input == "2":  #Random Word
+        elif usr_input == "2":      #Random Word
             rnd_word = _rand_word(game_instance.word_list)
             print(_play_game(game_instance.word_list, model, rnd_word))
-        elif usr_input == "3":  #Test the Model/Bot
+        elif usr_input == "3":      #Test the Model/Bot
             global TESTING_MODE
             TESTING_MODE = True
             testing_range = click.prompt("Enter the Number of Tests You Would Like to Run",
-                                         type=click.IntRange(1, ), show_choices=False)
+                                         type = click.IntRange(1,), show_choices=False)
             processes = click.prompt("How Many Parallel Processes Should be Used",
-                                     type=click.IntRange(1, 12), show_choices=True)
+                                     type = click.IntRange(1,12), show_choices=True)
             _test_bot_parallel(game_instance.word_list, testing_range, processes, model)
             print("Testing Complete! Returning To Main Menu...")
-        elif usr_input == "4":  # Collect Training Data
+        elif usr_input == "4":      #Collect Training Data
             testing_range = click.prompt("Enter the Number of Games to Collect Data From",
-                                         type=click.IntRange(1, ), show_choices=False)
+                                         type = click.IntRange(1,), show_choices=False)
             processes = click.prompt("How Many Parallel Processes Should be Used",
                                      type=click.IntRange(1, 12), show_choices=True)
             _gather_testing_data(game_instance, testing_range, processes)
             print("Training Data Collected! Returning To Main Menu...")
-        elif usr_input == "5":  # Choose Model/Bot to Use
+        elif usr_input == "5":      #Choose Model/Bot to Use
             print("Model Options:\n"
                   "1. Entropy Maximization\n"
                   "2. Random Forest Classifier")
             model = click.prompt("Enter the Model You Would Like to Use",
-                                 type=click.IntRange(1, 2), show_choices=False)
+                                 type=click.IntRange(1,2), show_choices=False)
         elif usr_input == 'q': exit()
         else:
             continue
@@ -87,6 +86,7 @@ def _handle_user_word(instance: wordle.Wordle):
             return word
         else:
             instance.word_list.add(word)
+            instance.needRecompute = True
 
 
 def _rand_word(words: set[str]):
@@ -163,8 +163,7 @@ def _test_bot_parallel(words: set[str], testing_runs: int, processes=2, model: i
 
 def _run_single_game(args):
     word, word_list, model = args
-    bot = entropy_maximization_bot.EntropyBot(list(word_list)) if model == 1 else random_forest.RandomForestBot(
-        list(word_list))
+    bot = entropy_maximization_bot.EntropyBot(list(word_list)) if model == 1 else random_forest.RandomForestBot(list(word_list))
     if model != 1 and not bot.is_trained: bot.train()
     guess_count = 0
     while guess_count < 6:
@@ -177,7 +176,8 @@ def _run_single_game(args):
     return guess_count
 
 def _gather_testing_data(game_instance: wordle.Wordle, game_count, process_count):
-    collector = TrainingDataCollector(list(game_instance.word_list))
+    collector = TrainingDataCollector(list(game_instance.word_list), game_instance.needRecompute)
+    game_instance.needRecompute = False
 
     start_time = time.time()
     print(f"Collecting data from {game_count} games...")
