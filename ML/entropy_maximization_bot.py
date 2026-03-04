@@ -54,14 +54,10 @@ class EntropyBot:
 
         return entropy
 
-
-    def make_guess(self, guess_count: int) -> str:
+    def make_guess(self) -> str:
         """
         Make a Guess That Maximizes Entropy in Order to Shrink the Remaining Word List as Much as Possible
         First Guess is Always "Crane" Due to it Being Optimal
-
-        Args:
-            guess_count (int): Tells the bot how many guesses it has already made
 
         Returns:
             str: The Bot's guess for that round
@@ -69,7 +65,7 @@ class EntropyBot:
         """
         self.game_state.guess_count += 1 #Increment the GameState guess count
 
-        if guess_count == 0: return "crane"
+        if self.game_state.guess_count == 0: return "crane"
         num_words = len(self.game_state.remaining_words)
 
         if num_words == 1:  #No entropy calculations for just 1 word

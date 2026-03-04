@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-import numpy as np
+
 import joblib
+import numpy as np
 
 from Utilities.game_state import GameState
 from Utilities.shared_utils import extract_features
@@ -55,13 +56,9 @@ class BaseWordleModel(ABC):
 
 
     @abstractmethod
-    def train(self, X: np.ndarray, y: np.ndarray) -> None:
+    def train(self) -> None:
         """
-        Train the model.
-
-        Args:
-            X: Shape (num_samples, 313) - feature matrices
-            y: Shape (num_samples, 26) - soft labels for each letter
+        Loads training data from the disk and trains the model off of it.
         """
         pass
 
@@ -93,11 +90,11 @@ class BaseWordleModel(ABC):
         """
     pass
 
-
-    def save(self, filepath: str) -> None:
+    def save(self, filepath: str, keep_game_state: bool) -> None:
         """Save trained model to disk using joblib."""
         if not self.is_trained:
             raise ValueError("Cannot save untrained model")
+        if not keep_game_state: self.game_state.reset()
         joblib.dump(self, filepath)
 
 

@@ -5,14 +5,16 @@ init(autoreset=True)
 
 
 def print_menu():
-    print("Welcome to The Overly-Complicated Wordle Bot!\n"
+    print("\nMain Menu\n"
           "---------------------------------------------\n\n"
           "Please Choose an Option:\n"
           "1. User-Chosen Word\n"
           "2. Randomly-Chosen Word\n"
           "3. Test The Bot\n"
           "4. Generate Training Data\n"
+          "5. Pick Which Model to Use\n"
           "To Quit, Enter 'q'\n")
+
 
 def print_wordle_result(word: str, result: list[int]):
     """
@@ -49,6 +51,7 @@ def print_game_state(guesses: list[tuple[str, list[int]]]):
     for word, result in guesses:
         print_wordle_result(word, result)
     print("-" * 30)
+
 
 def print_game_start():
     print("\nTo Play, Enter a 5-Letter Word to Make a Guess.")

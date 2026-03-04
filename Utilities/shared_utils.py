@@ -1,6 +1,8 @@
 from collections import Counter, defaultdict
-from Utilities.game_state import GameState
+
 import numpy as np
+
+from Utilities.game_state import GameState
 
 
 def calculate_normalized_letter_freq(remaining_words: list[str]):
@@ -206,7 +208,7 @@ def extract_features(game_state: GameState):
         green_letters.flatten(),  # 130 values (5×26)
         yellow_letters.flatten(),  # 130 values (5×26)
         gray_letters,  # 26 values
-        [len(game_state.remaining_words) / len(self.word_list)],  # 1 value
+        [len(game_state.remaining_words) / len(game_state.master_list)],  # 1 value
         [game_state.guess_count]  # 1 value
     ])
 
