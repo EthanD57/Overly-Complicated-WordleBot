@@ -41,27 +41,31 @@ def _startup(game_instance: wordle.Wordle):
             global TESTING_MODE
             TESTING_MODE = True
             while True:
-                testing_range = input("How many games should be ran to test the bot?\n").strip()
+                testing_range = input("How many games should be ran to test the bot?"
+                                      "Enter an Integer\n").strip()
+                process_count = input("How many parallel processes should be used?"
+                                      "Enter an Integer (1-8 suggested)\n").strip()
                 try:
                     testing_range = int(testing_range)
+                    process_count = int(process_count)
                     break
                 except ValueError:
-                    print("Please Enter an Integer")
-            _test_bot_parallel(game_instance.word_list, testing_range)
+                    print("Non-Integer Entered")
+            _test_bot_parallel(game_instance.word_list, testing_range, process_count)
             exit()
         elif usr_input == "4":
             while True:
                 testing_range = input("How many games would you like the bot to generate? "
-                                      "Enter an Integer (1000-10000 Suggested\n")
+                                      "Enter an Integer (1000-10000 Suggested\n").strip()
                 processes = input("How many parallel processes would you like to use? "
-                                  "Enter an Integer (1-8 Suggested)\n")
+                                  "Enter an Integer (1-8 Suggested)\n").strip()
                 try:
                     testing_range = int(testing_range)
                     processes = int(processes)
                     break
                 except ValueError:
                     print("Non-Integer Entered")
-            _gather_testing_date(game_instance, testing_range, processes)
+            _gather_testing_data(game_instance, testing_range, processes)
             exit()
         elif usr_input == 'q': exit()
         else:
@@ -148,11 +152,11 @@ def _play_game(words: set[str], word=""):
     return "Word Not Guessed :("
 
 
-def _test_bot_parallel(words: set[str], testing_runs: int):
+def _test_bot_parallel(words: set[str], testing_runs: int, processes=2):
     correct_games = 0
     incorrect_games = 0
     guess_counts = []
-    with Pool(processes=4) as pool:
+    with Pool(processes) as pool:
         args = [(_rand_word(words), words) for _ in range(testing_runs)]
         results = pool.map(_run_single_game, args)
         for result in results:
@@ -179,7 +183,7 @@ def _run_single_game(args):
         guess_count += 1
     return guess_count
 
-def _gather_testing_date(game_instance: wordle.Wordle, game_count, process_count):
+def _gather_testing_data(game_instance: wordle.Wordle, game_count, process_count):
     collector = TrainingDataCollector(list(game_instance.word_list))
 
     start_time = time.time()

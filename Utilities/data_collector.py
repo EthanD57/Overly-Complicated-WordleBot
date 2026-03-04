@@ -6,7 +6,7 @@ import pickle
 
 from ML.entropy_maximization_bot import EntropyBot
 from ML import entropy_maximization_bot
-from Utilities.shared_utils import calculate_normalized_letter_freq, score_guess, get_high_frequency_candidates
+from Utilities.shared_utils import calculate_normalized_letter_freq, score_guess, get_high_frequency_candidates, filter_words
 
 
 def create_training_labels(bot: entropy_maximization_bot.EntropyBot, k: int):
@@ -22,8 +22,9 @@ def create_training_labels(bot: entropy_maximization_bot.EntropyBot, k: int):
         np.array: An array of letter labels weights floats
     """
 
-    if len(bot.game_state.remaining_words) > 20:   #The entropy function is super costly, so we're guess_candidates
-        candidates_to_check = min(300, len(bot.game_state.remaining_words) * 2)
+    if len(bot.game_state.remaining_words) > 20:    #The entropy function is super costly, so we're guess_candidates
+                                                    #20 is arbitrary
+        candidates_to_check = min(300, len(bot.game_state.remaining_words) * 2)    #300 is arbitrary
         guess_candidates = get_high_frequency_candidates(bot.game_state, candidates_to_check)
     else:
         guess_candidates = bot.game_state.master_list

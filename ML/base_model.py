@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from collections import Counter
 import numpy as np
 import joblib
 
@@ -35,7 +34,7 @@ class BaseWordleModel(ABC):
         This is the SAME for all models. If you change features,
         you must retrain all models.
 
-        This method is ALWAYS called after the update_features() method in GameState
+        This method is ALWAYS called after filter_words() is called.
 
         Args:
             game_state (GameState): The current state of the game including remaining words,
@@ -52,7 +51,6 @@ class BaseWordleModel(ABC):
         """
 
         letter_frequencies = calculate_normalized_letter_freq(game_state.remaining_words)
-        game_state.update_constraints()
 
         features = np.concatenate([
             letter_frequencies,  # 26 values
@@ -119,8 +117,5 @@ class BaseWordleModel(ABC):
         return joblib.load(filepath)
 
 
-    def update_game_state(self) -> None:
-        """Update game state constraints after filtering words."""
-        self.game_state.update_constraints()
 
 

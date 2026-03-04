@@ -95,17 +95,17 @@ def filter_words(guess: str, result: list[int], game_state: GameState):
     # First pass: collect all requirements from the guess
     letter_min_count = defaultdict(int)  # Minimum times a letter must appear
     letter_max_count = {}  # Maximum times a letter can appear
-    position_requirements = {}  # pos -> letter (green: must be at this position)
     position_exclusions = defaultdict(set)  # pos -> {letters} (yellow: can't be at this position)
     game_state.scored_rounds[guess] = result
 
     for pos, (letter, score) in enumerate(zip(guess, result)):
         if score == 2:  # Green - letter is in the correct position
             letter_min_count[letter] += 1
-            position_requirements[pos] = letter
+            game_state.green_letters[pos] = letter
         elif score == 1:  # Yellow - letter is in word but wrong position
             letter_min_count[letter] += 1
             position_exclusions[pos].add(letter)
+            game_state.yellow_letters.add(letter)
         else:  # Gray - letter is not in word, OR we've found all instances
             # Count how many times this letter appears as green/yellow in the entire guess
             green_yellow_count = sum(1 for l, s in zip(guess, result) if l == letter and s in [1, 2])
@@ -115,12 +115,13 @@ def filter_words(guess: str, result: list[int], game_state: GameState):
             else:
                 # Letter not in word at all
                 letter_max_count[letter] = 0
+                game_state.gray_letters.add(letter)
 
     # Second pass: filter words based on all requirements
     filtered_words = []
     for word in game_state.remaining_words:
         # Check position requirements (green letters must be in correct spots)
-        if not all(word[pos] == letter for pos, letter in position_requirements.items()):
+        if not all(word[pos] == letter for pos, letter in game_state.green_letters.items()):
             continue
 
         # Check position exclusions (yellow letters can't be in certain positions)
