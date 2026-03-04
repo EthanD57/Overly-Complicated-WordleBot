@@ -2,8 +2,9 @@ from abc import ABC, abstractmethod
 import numpy as np
 import joblib
 
-from Utilities.data_collector import calculate_normalized_letter_freq
 from Utilities.game_state import GameState
+from Utilities.shared_utils import extract_features
+
 
 class BaseWordleModel(ABC):
     """
@@ -50,18 +51,7 @@ class BaseWordleModel(ABC):
         - Guess number
         """
 
-        letter_frequencies = calculate_normalized_letter_freq(game_state.remaining_words)
-
-        features = np.concatenate([
-            letter_frequencies,  # 26 values
-            np.array(game_state.green_letters.flatten()),  # 130 values (5×26)
-            np.array(game_state.yellow_letters),
-            np.array(game_state.gray_letters),  # 26 values
-            [len(game_state.remaining_words) / len(game_state.master_list)],  # 1 value
-            [game_state.guess_count]  # 1 value
-        ])
-
-        return features
+        return extract_features(game_state)
 
 
     @abstractmethod

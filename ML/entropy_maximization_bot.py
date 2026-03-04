@@ -10,6 +10,7 @@ class EntropyBot:
         self.game_state = GameState(word_list)
         self.seen_scores = {}
 
+
     def _get_score(self, answer: str, guess: str) -> tuple:
         """
         Cached version of score_guess for speed
@@ -25,6 +26,7 @@ class EntropyBot:
         if pair not in self.seen_scores:
             self.seen_scores[pair] = tuple(score_guess(answer, guess))
         return self.seen_scores[pair]
+
 
     def calculate_entropy(self, word: str) -> float:
         """
@@ -52,10 +54,11 @@ class EntropyBot:
 
         return entropy
 
+
     def make_guess(self, guess_count: int) -> str:
         """
-        Make a First Guess Based Off of The Most Common
-        Letters in The word_list
+        Make a Guess That Maximizes Entropy in Order to Shrink the Remaining Word List as Much as Possible
+        First Guess is Always "Crane" Due to it Being Optimal
 
         Args:
             guess_count (int): Tells the bot how many guesses it has already made
@@ -64,6 +67,8 @@ class EntropyBot:
             str: The Bot's guess for that round
 
         """
+        self.game_state.guess_count += 1 #Increment the GameState guess count
+
         if guess_count == 0: return "crane"
         num_words = len(self.game_state.remaining_words)
 

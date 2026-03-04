@@ -176,3 +176,38 @@ def get_high_frequency_candidates(game_state: GameState, top_n=300) -> list:
 
     scored_candidates.sort(reverse=True)
     return [word for _, word in scored_candidates[:top_n]]
+
+
+def extract_features(game_state: GameState):
+    """
+    Extract features from current game state.
+
+    Returns:
+        np.array: Feature vector representing the current state
+    """
+
+    letter_frequencies= calculate_normalized_letter_freq(game_state.remaining_words)
+    green_letters = np.zeros((5, 26), dtype=int)
+    yellow_letters = np.zeros((5, 26), dtype=int)
+    gray_letters = np.zeros(26, dtype=int)
+
+    for guess, score in game_state.scored_rounds.items():
+        for pos, (letter, result) in enumerate(zip(guess, score)):
+            letter_idx = ord(letter) - ord('a')
+            if result == 2:  #If the letter is green, mark that position as green in the character's array
+                green_letters[pos, letter_idx] = 1
+            if result == 1:  #If the letter is yellow, mark that position is yellow in that character's array
+                yellow_letters[pos, letter_idx] = 1
+            if result == 0:  #If the letter is gray, mark that position as gray in the letter array.
+                gray_letters[letter_idx] = 1
+
+    features = np.concatenate([
+        letter_frequencies,  # 26 values
+        green_letters.flatten(),  # 130 values (5×26)
+        yellow_letters.flatten(),  # 130 values (5×26)
+        gray_letters,  # 26 values
+        [len(game_state.remaining_words) / len(self.word_list)],  # 1 value
+        [game_state.guess_count]  # 1 value
+    ])
+
+    return features

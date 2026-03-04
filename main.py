@@ -42,9 +42,9 @@ def _startup(game_instance: wordle.Wordle):
             TESTING_MODE = True
             while True:
                 testing_range = input("How many games should be ran to test the bot?"
-                                      "Enter an Integer\n").strip()
+                                      " Enter an Integer\n").strip()
                 process_count = input("How many parallel processes should be used?"
-                                      "Enter an Integer (1-8 suggested)\n").strip()
+                                      " Enter an Integer (1-8 suggested)\n").strip()
                 try:
                     testing_range = int(testing_range)
                     process_count = int(process_count)
@@ -56,9 +56,9 @@ def _startup(game_instance: wordle.Wordle):
         elif usr_input == "4":
             while True:
                 testing_range = input("How many games would you like the bot to generate? "
-                                      "Enter an Integer (1000-10000 Suggested\n").strip()
+                                      " Enter an Integer (1000-10000 Suggested\n").strip()
                 processes = input("How many parallel processes would you like to use? "
-                                  "Enter an Integer (1-8 Suggested)\n").strip()
+                                  " Enter an Integer (1-8 Suggested)\n").strip()
                 try:
                     testing_range = int(testing_range)
                     processes = int(processes)
