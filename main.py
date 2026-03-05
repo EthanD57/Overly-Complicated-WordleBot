@@ -6,15 +6,15 @@ from multiprocessing import Pool
 import click
 
 from Utilities.data_collector import TrainingDataCollector
-from Utilities.game_state import GameState
 from Utilities.shared_utils import filter_words, score_guess, calculate_entropy_pattern_table
-from ML import entropy_maximization_bot, random_forest
+from ML import entropy_maximization_bot, random_forest_classifier, random_forest_regressor
 from Utilities import display
 
 TESTING_MODE = False
 
-
+#I know I'm going to get IDE warnings about this, but leaving it as None for now is fine. It will always get assigned
 worker_pattern_table = None
+model_options = ["Entropy Maximization", "Random Forest Classifier", "Random Forest Regressor"]
 
 
 def _startup(game_instance: wordle.Wordle):
@@ -32,7 +32,7 @@ def _startup(game_instance: wordle.Wordle):
     """
     model = 1
     while True:
-        display.print_menu()
+        display.print_menu(model, model_options)
         usr_input = click.prompt("Please Choose an Option", type=click.Choice(["1", "2", "3", "4", "5", "q"]),
                                  show_choices=False)
         if usr_input == "1":  #User-Chosen Word
@@ -60,9 +60,10 @@ def _startup(game_instance: wordle.Wordle):
         elif usr_input == "5":  #Choose Model/Bot to Use
             print("Model Options:\n"
                   "1. Entropy Maximization\n"
-                  "2. Random Forest Classifier")
+                  "2. Random Forest Classifier\n"
+                  "3. Random Forest Regressor\n")
             model = click.prompt("Enter the Model You Would Like to Use",
-                                 type=click.IntRange(1, 2), show_choices=False)
+                                 type=click.IntRange(1, 3), show_choices=False)
         elif usr_input == 'q':
             exit()
         else:
@@ -125,12 +126,7 @@ def _play_game(game_instance: wordle.Wordle, model: int, word=""):
     """
 
     display.print_game_start()
-    if model == 1:
-        pattern_table = get_pattern_table(game_instance)
-        bot = entropy_maximization_bot.EntropyBot(game_instance.word_list, pattern_table)
-    else:
-        bot = random_forest.RandomForestBot(game_instance.word_list)
-        bot.train()
+    bot = initialize_bot(game_instance, model)
 
     guess_count = 0
     guesses = []
@@ -161,7 +157,13 @@ def _test_bot_parallel(game_instance: wordle.Wordle, testing_runs: int, processe
     correct_games = 0
     incorrect_games = 0
     guess_counts = []
-    pattern_table = get_pattern_table(game_instance)
+    pattern_table = None
+
+    if model != 1:
+        initialize_bot(game_instance, model)
+    else:
+        pattern_table = get_pattern_table(game_instance)
+
     with Pool(processes, initializer=init_worker, initargs=(pattern_table,)) as pool:
         args = [(_rand_word(game_instance.word_list), game_instance.word_list, model) for _ in range(testing_runs)]
         results = pool.map(_run_single_game, args)
@@ -181,8 +183,10 @@ def _run_single_game(args):
 
     if model == 1:
         bot = entropy_maximization_bot.EntropyBot(word_list, worker_pattern_table)
+    elif model == 2:
+        bot = random_forest_classifier.RandomForestClassifierModel(word_list)
     else:
-        bot = random_forest.RandomForestBot(word_list)
+        bot = random_forest_regressor.RandomForestRegressorModel(word_list)
 
     if model != 1 and not bot.is_trained: bot.train()
     guess_count = 0
@@ -220,6 +224,19 @@ def get_pattern_table(game_instance: wordle.Wordle):
         return pattern_table
     else:
         return worker_pattern_table
+
+
+def initialize_bot(game_instance: wordle.Wordle, model: int = 1):
+    if model == 1:
+        return entropy_maximization_bot.EntropyBot(game_instance.word_list, get_pattern_table(game_instance))
+    elif model == 2:
+        bot = random_forest_classifier.RandomForestClassifierModel(game_instance.word_list)
+        bot.train()
+        return bot
+    else:
+        bot = random_forest_regressor.RandomForestRegressorModel(game_instance.word_list)
+        bot.train()
+        return bot
 
 
 if __name__ == '__main__':

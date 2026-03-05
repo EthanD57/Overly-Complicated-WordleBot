@@ -1,7 +1,8 @@
-import pickle
-from abc import ABC, abstractmethod
-import numpy as np
 import joblib
+from abc import ABC, abstractmethod
+from pathlib import Path
+
+import numpy as np
 
 from Utilities.game_state import GameState
 from Utilities.shared_utils import extract_features
@@ -91,20 +92,20 @@ class BaseWordleModel(ABC):
     pass
 
 
-    def save(self, filepath: str, keep_game_state: bool) -> None:
+    def save(self, filepath: Path, keep_game_state: bool) -> None:
         """Save trained model to disk using joblib."""
         if not self.is_trained:
             raise ValueError("Cannot save untrained model")
         if not keep_game_state: self.game_state.reset()
         with open(filepath, 'wb') as f:
-            pickle.dump(self, f)
+            joblib.dump(self, f)
 
 
     @staticmethod
-    def load(filepath: str) -> 'BaseWordleModel':
+    def load(filepath: Path) -> 'BaseWordleModel':
         """Load trained model from disk."""
         with open(filepath, 'rb') as f:
-            return pickle.load(f)
+            return joblib.load(f)
 
 
 

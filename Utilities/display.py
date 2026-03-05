@@ -4,9 +4,10 @@ from colorama import Fore, Back, Style, init
 init(autoreset=True)
 
 
-def print_menu():
+def print_menu(model : int, model_options : list[str]):
     print("\nMain Menu\n"
-          "---------------------------------------------\n\n"
+          "---------------------------------------------\n"
+          f"Current Model: {model_options[model-1]}\n\n"
           "Please Choose an Option:\n"
           "1. User-Chosen Word\n"
           "2. Randomly-Chosen Word\n"

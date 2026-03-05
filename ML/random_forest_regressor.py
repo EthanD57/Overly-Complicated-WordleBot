@@ -1,20 +1,20 @@
 import pickle
+from pathlib import Path
+
 import numpy as np
 from numpy import ndarray
 
 from ML.base_model import BaseWordleModel
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.multioutput import MultiOutputClassifier
+from sklearn.ensemble import RandomForestRegressor
 from Utilities.game_state import GameState
 
 
-class RandomForestBot(BaseWordleModel):
+class RandomForestRegressorModel(BaseWordleModel):
     def __init__(self, word_list: list[str]):
-        super().__init__(model_name="random_forest", word_list=word_list)
+        super().__init__(model_name="random_forest_regressor", word_list=word_list)
 
-        # Initialize sklearn RandomForestClassifier with defaults for now
-        #IF the performance is bad, I'll adjust this
-        self._model = RandomForestClassifier()
+        self.model_path = Path('ML/saved_models/random_forest_regressor.pkl')
+        self._model = RandomForestRegressor(n_estimators=100)
 
 
     def train(self) -> None:
@@ -22,34 +22,50 @@ class RandomForestBot(BaseWordleModel):
         Loads training data from the disk and trains the model off of it.
         """
 
+        if self.model_path.exists():
+            saved_bot = self.load(self.model_path)
+            self._model = saved_bot._model
+            self.is_trained = True
+            return
+
+        print("Training model...")
         with open('ML/training_data/wordle_training.pkl', 'rb') as f:
             training_data = pickle.load(f)
 
-        print("This bot isn't trained yet! Training...")
         x = np.array([example[0] for example in training_data])  # Features
         y = np.array([example[1] for example in training_data])  # Labels
 
-        y_binary = (y > 0.35).astype(int)
-
-        self._model = MultiOutputClassifier(RandomForestClassifier())
-        self._model.fit(x, y_binary)
+        #Use parallel jobs ONLY for fit(). Can't have anything over n=1 when using multipool/other parallelization
+        self._model = RandomForestRegressor(n_estimators=100, n_jobs=4)
+        self._model.fit(x, y)
+        self._model.n_jobs = 1
         self.is_trained = True
 
-        self.save("ML/saved_models/random_forest.pkl", True)
+        self.save(self.model_path, True)
 
 
     def make_guess(self) -> str:
         """Get candidates, score by probability, return best word"""
-
         letter_probs = self.predict(self.game_state)
 
         best_word = None
         best_score = -1
+        remaining_count = len(self.game_state.remaining_words)
 
-        if len(self.game_state.remaining_words) == 1: return self.game_state.remaining_words[0]
+        if remaining_count == 1: return self.game_state.remaining_words[0]
 
-        for word in self.game_state.remaining_words:
-            score = sum(letter_probs[ord(letter) - ord('a')] for letter in word)
+        if remaining_count > 20:
+            candidate_pool = self.game_state.master_list
+        else:
+            candidate_pool = self.game_state.remaining_words
+
+        for word in candidate_pool:
+            score = sum(letter_probs[ord(letter) - ord('a')] for letter in set(word))
+
+            # Prefer words that could actually be the answer
+            if word in self.game_state.remaining_words:
+                score += 0.01
+
             if score > best_score:
                 best_word = word
                 best_score = score
@@ -71,15 +87,6 @@ class RandomForestBot(BaseWordleModel):
         """
 
         features = self.engineer_features(game_state).reshape(1, -1)
-        proba_list = self._model.predict_proba(features)
-
-        letter_probs = np.zeros(26)
-        for i, proba in enumerate(proba_list):
-            if proba.shape[1] == 2:
-                letter_probs[i] = proba[0, 1]
-            else:
-                # Classifier only saw one class during training
-                # Q seemingly just sucks at being high entropy, so this catches it
-                letter_probs[i] = 0.0
+        letter_probs = self._model.predict(features)[0]
 
         return letter_probs
