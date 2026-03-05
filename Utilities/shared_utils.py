@@ -148,6 +148,7 @@ def filter_words(guess: str, result: list[int], game_state: GameState):
             filtered_words.append(word)
 
     game_state.remaining_words = filtered_words
+    game_state.remaining_words_indices = [game_state.word_to_index[word] for word in game_state.remaining_words]
 
 
 def get_high_frequency_candidates(game_state: GameState, top_n=300, candidate_pool: list = None) -> list:
@@ -216,18 +217,21 @@ def extract_features(game_state: GameState):
 
     return features
 
-def calculate_entropy_pattern_table(all_words_matrix: np.array):
-    """
-    Uses batched scoring to precompute entropy pattern table for extensive training data generation
 
-    Args:
-        #TODO: args for the function and descriptions
+def calculate_entropy_pattern_table(word_list: list[str]):
 
-    Returns:
-        #TODO: Pattern table name and description
+    n = len(word_list)
+    pattern_matrix = np.zeros((n, n), dtype=np.uint8)
+    powers_of_3 = np.array([81, 27, 9, 3, 1], dtype=np.uint8)
 
-    """
+    print(f"Precomputing {n}x{n} pattern table (this might take a minute, but only happens once)...")
+
     for i, guess in enumerate(word_list):
-        matrix[i, :] = batch_scoring(guess, all_words_matrix)
+        for j, answer in enumerate(word_list):
 
-    pass
+            score_list = score_guess(answer, guess)
+
+            score_int = np.sum(np.array(score_list) * powers_of_3)
+            pattern_matrix[i, j] = score_int
+
+    return pattern_matrix

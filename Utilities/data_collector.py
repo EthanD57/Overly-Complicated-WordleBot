@@ -1,4 +1,3 @@
-
 from multiprocessing import Pool
 from random import choice
 import pickle
@@ -9,10 +8,7 @@ from ML import entropy_maximization_bot
 from Utilities.shared_utils import (calculate_normalized_letter_freq, score_guess, get_high_frequency_candidates,
                                     filter_words, extract_features)
 
-
-master_matrix_map = list()
-entropy_pattern_lookup_table = None     #Will be initialized on the first run of collect_training_data_parallel()
-word_list_size = 0
+worker_pattern_table = None  #Will be initialized on the first run of collect_training_data_parallel()
 
 
 def create_training_labels(bot: entropy_maximization_bot.EntropyBot, k: int):
@@ -28,16 +24,16 @@ def create_training_labels(bot: entropy_maximization_bot.EntropyBot, k: int):
         np.array: An array of letter labels weights floats
     """
 
-    if len(bot.game_state.remaining_words) > 20:    #The entropy function is super costly, so we're guess_candidates
-                                                    #20 is arbitrary
-        candidates_to_check = min(200, len(bot.game_state.remaining_words) * 2)    #200 is arbitrary
+    if len(bot.game_state.remaining_words) > 20:  #The entropy function is super costly, so we're guess_candidates
+        #20 is arbitrary
+        candidates_to_check = min(200, len(bot.game_state.remaining_words) * 2)  #200 is arbitrary
         guess_candidates = get_high_frequency_candidates(bot.game_state, candidates_to_check)
     else:
         guess_candidates = bot.game_state.master_list
 
     word_entropies = []
-    for word in guess_candidates:   #Get the word entropies from the bot
-        word_entropies.append(bot.calculate_entropy_pattern_table(word))
+    for word in guess_candidates:  #Get the word entropies from the bot
+        word_entropies.append(bot.calculate_entropy(word))
 
     entropy_guess_pairs = list(zip(guess_candidates, word_entropies))
     entropy_guess_pairs.sort(key=lambda x: x[1], reverse=True)
@@ -59,7 +55,7 @@ def _collect_games_worker(args: tuple):
     num_games, k, word_list = args
 
     for x in range(num_games):
-        bot = EntropyBot(word_list)
+        bot = EntropyBot(word_list, worker_pattern_table)
         target_word = choice(word_list)
         guess_count = 0
 
@@ -81,13 +77,16 @@ def _collect_games_worker(args: tuple):
     return training_data
 
 
+def init_worker(pattern_table):
+    global worker_pattern_table
+    worker_pattern_table = pattern_table
+
+
 class TrainingDataCollector:
-    def __init__(self, word_list: list[str], recomputeFlag: bool):
+    def __init__(self, word_list: list[str], pattern_table: np.ndarray):
         self.word_list = word_list
         self.training_data = []
-        self.recomputeFlag = recomputeFlag
-        self.entropy_matrix = np.zeros((len(word_list), len(word_list)))
-        self.matrix_mapping = master_matrix_map
+        self.entropy_pattern_table = pattern_table
 
     def collect_training_data_parallel(self, num_games: int, k: int = 10, processes: int = 4):
         """
@@ -99,12 +98,10 @@ class TrainingDataCollector:
             k: Number of top entropy words to use for labels
         """
 
-        if self.recomputeFlag: self.recompute_entropy_matrix()
-
         # Split games across processes
         games_per_process = num_games // processes
 
-        with Pool(processes=processes) as pool:
+        with Pool(processes=processes, initializer=init_worker, initargs=(self.entropy_pattern_table,)) as pool:
             args = [(games_per_process, k, self.word_list) for _ in range(processes)]
             results = pool.map(_collect_games_worker, args)
 
@@ -115,25 +112,3 @@ class TrainingDataCollector:
         # Save
         with open('ML/training_data/wordle_training.pkl', 'wb') as f:
             pickle.dump(self.training_data, f)
-
-    def recompute_entropy_matrix(self):
-        # Update the matrix map to match the new word list
-        global master_matrix_map
-        global word_list_size
-        global entropy_pattern_lookup_table
-
-        #Set the master word list size
-        word_list_size = len(self.word_list)
-
-        #Initialize a new global pattern lookup table based off the word list size
-        entropy_pattern_lookup_table = np.empty((word_list_size, word_list_size))
-
-        #Freeze the mapping so we can keep track of word indices across multiple runs
-        master_matrix_map = list(self.word_list)
-
-        # Update our local matrix map to match the master map
-        self.matrix_mapping = master_matrix_map
-
-        #TODO: Recompute the pattern lookup table
-
-        pass

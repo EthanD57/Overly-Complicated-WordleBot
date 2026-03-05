@@ -25,14 +25,17 @@ class RandomForestBot(BaseWordleModel):
         with open('ML/training_data/wordle_training.pkl', 'rb') as f:
             training_data = pickle.load(f)
 
+        print("This bot isn't trained yet! Training...")
         x = np.array([example[0] for example in training_data])  # Features
         y = np.array([example[1] for example in training_data])  # Labels
 
-        y_binary = (y > 0.30).astype(int)
+        y_binary = (y > 0.35).astype(int)
 
         self._model = MultiOutputClassifier(RandomForestClassifier())
         self._model.fit(x, y_binary)
         self.is_trained = True
+
+        self.save("ML/saved_models/random_forest.pkl", True)
 
 
     def make_guess(self) -> str:
