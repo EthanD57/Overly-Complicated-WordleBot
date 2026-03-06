@@ -14,7 +14,7 @@ TESTING_MODE = False
 
 #I know I'm going to get IDE warnings about this, but leaving it as None for now is fine. It will always get assigned
 worker_pattern_table = None
-model_options = ["Entropy Maximization", "Random Forest Classifier", "Random Forest Regressor"]
+model_options = ["Entropy Maximization", "Random Forest Classifier", "Random Forest Regressor", "Neural Network Classifier"]\
 
 
 def _startup(game_instance: wordle.Wordle):
@@ -61,9 +61,10 @@ def _startup(game_instance: wordle.Wordle):
             print("Model Options:\n"
                   "1. Entropy Maximization\n"
                   "2. Random Forest Classifier\n"
-                  "3. Random Forest Regressor\n")
+                  "3. Random Forest Regressor\n"
+                  "4. Neural Network Classifier\n")
             model = click.prompt("Enter the Model You Would Like to Use",
-                                 type=click.IntRange(1, 3), show_choices=False)
+                                 type=click.IntRange(1, 4), show_choices=False)
         elif usr_input == 'q':
             exit()
         else:
@@ -185,8 +186,11 @@ def _run_single_game(args):
         bot = entropy_maximization_bot.EntropyBot(word_list, worker_pattern_table)
     elif model == 2:
         bot = random_forest_classifier.RandomForestClassifierModel(word_list)
-    else:
+    elif model == 3:
         bot = random_forest_regressor.RandomForestRegressorModel(word_list)
+    else:
+        from ML.neural_net import neural_network_classifier
+        bot = neural_network_classifier.NeuralNetworkClassifier(word_list)
 
     if model != 1 and not bot.is_trained: bot.train()
     guess_count = 0
@@ -233,8 +237,13 @@ def initialize_bot(game_instance: wordle.Wordle, model: int = 1):
         bot = random_forest_classifier.RandomForestClassifierModel(game_instance.word_list)
         bot.train()
         return bot
-    else:
+    elif model == 3:
         bot = random_forest_regressor.RandomForestRegressorModel(game_instance.word_list)
+        bot.train()
+        return bot
+    else:
+        from ML.neural_net import neural_network_classifier
+        bot = neural_network_classifier.NeuralNetworkClassifier(game_instance.word_list)
         bot.train()
         return bot
 

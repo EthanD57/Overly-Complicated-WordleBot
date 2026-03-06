@@ -44,35 +44,6 @@ class RandomForestRegressorModel(BaseWordleModel):
         self.save(self.model_path, True)
 
 
-    def make_guess(self) -> str:
-        """Get candidates, score by probability, return best word"""
-        letter_probs = self.predict(self.game_state)
-
-        best_word = None
-        best_score = -1
-        remaining_count = len(self.game_state.remaining_words)
-
-        if remaining_count == 1: return self.game_state.remaining_words[0]
-
-        if remaining_count > 20:
-            candidate_pool = self.game_state.master_list
-        else:
-            candidate_pool = self.game_state.remaining_words
-
-        for word in candidate_pool:
-            score = sum(letter_probs[ord(letter) - ord('a')] for letter in set(word))
-
-            # Prefer words that could actually be the answer
-            if word in self.game_state.remaining_words:
-                score += 0.01
-
-            if score > best_score:
-                best_word = word
-                best_score = score
-
-        return best_word
-
-
     def predict(self, game_state: GameState) -> ndarray:
         """
         Predict letter probabilities for a single game state.

@@ -80,7 +80,6 @@ class BaseWordleModel(ABC):
         pass
 
 
-    @abstractmethod
     def make_guess(self) -> str:
         """
         This method houses the main logic for the bot to make a guess.
@@ -89,7 +88,32 @@ class BaseWordleModel(ABC):
             str: The guessed answer
 
         """
-    pass
+        letter_probs = self.predict(self.game_state)
+        self.game_state.guess_count += 1
+
+        best_word = None
+        best_score = -1
+        remaining_count = len(self.game_state.remaining_words)
+
+        if remaining_count == 1: return self.game_state.remaining_words[0]
+
+        if remaining_count > 20:
+            candidate_pool = self.game_state.master_list
+        else:
+            candidate_pool = self.game_state.remaining_words
+
+        for word in candidate_pool:
+            score = sum(letter_probs[ord(letter) - ord('a')] for letter in set(word))
+
+            # Prefer words that could actually be the answer
+            if word in self.game_state.remaining_words:
+                score += 0.01
+
+            if score > best_score:
+                best_word = word
+                best_score = score
+
+        return best_word
 
 
     def save(self, filepath: Path, keep_game_state: bool) -> None:

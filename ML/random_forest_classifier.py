@@ -47,25 +47,6 @@ class RandomForestClassifierModel(BaseWordleModel):
         self.save(self.model_path, True)
 
 
-    def make_guess(self) -> str:
-        """Get candidates, score by probability, return best word"""
-
-        letter_probs = self.predict(self.game_state)
-
-        best_word = None
-        best_score = -1
-
-        if len(self.game_state.remaining_words) == 1: return self.game_state.remaining_words[0]
-
-        for word in self.game_state.remaining_words:
-            score = sum(letter_probs[ord(letter) - ord('a')] for letter in word)
-            if score > best_score:
-                best_word = word
-                best_score = score
-
-        return best_word
-
-
     def predict(self, game_state: GameState) -> ndarray:
         """
         Predict letter probabilities for a single game state.
