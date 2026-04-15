@@ -22,6 +22,9 @@ def main(game_instance: wordle.Wordle):
         None
 
     """
+    models = ["entropy_maximization","random_forest_classifier","random_forest_regressor",
+              "deep_q_network","neural_network_classifier","q_learning"]
+
     parser = argparse.ArgumentParser(description="Wordle Bot Runner")
 
     parser.add_argument('--word', type=str, required=False, help='The word to guess')
@@ -30,7 +33,13 @@ def main(game_instance: wordle.Wordle):
 
     args = parser.parse_args()
 
+    if args.word is None:
+        args.word = choice(game_instance.word_list)
 
+    model = models.index(args.model)
+    result = _play_game(game_instance, model, args.word)
+    print(result)
+    return result
 
 
 def _play_game(game_instance: wordle.Wordle, model: int, word=""):
