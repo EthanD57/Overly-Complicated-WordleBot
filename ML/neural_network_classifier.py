@@ -9,9 +9,25 @@ from ML.base_model import BaseWordleModel
 from Utilities.game_state import GameState
 
 
+class NeuralNetwork(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(314, 256),
+            nn.ReLU(),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, 26),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        return self.network(x)
+
+
 class NeuralNetworkClassifier(BaseWordleModel):
     def __init__(self, word_list: list[str]):
-        super().__init__(model_name = "Neural Network Classifier", word_list=word_list)
+        super().__init__(model_name="Neural Network Classifier", word_list=word_list)
         self._model = NeuralNetwork()
         self.model_path = Path('ML/saved_models/neural_network.pkl')
 
@@ -27,6 +43,7 @@ class NeuralNetworkClassifier(BaseWordleModel):
             self.is_trained = True
             return
 
+        print("Training Model... this might take a bit")
         #Otherwise, train a new model and save it
         try:
             with open('ML/training_data/wordle_training.pkl', 'rb') as f:
@@ -45,13 +62,14 @@ class NeuralNetworkClassifier(BaseWordleModel):
         criterion = nn.BCELoss()
         optimizer = torch.optim.Adam(self._model.parameters(), lr=0.001)
 
-        for i in range (1000):
+        for i in range(1000):
             loss = self.train_epoch(optimizer, criterion, x_tensor, y_tensor)
-            if i % 10 == 0:
-                print(f"Current Training Epoch: {i}")
+            if i % 100 == 0:
+                print(f"Loss: {loss} at iteration {i}")
+
         self.is_trained = True
         self._model.eval()
-        self.save(self.model_path, True)
+        self.save(self.model_path, False)
 
     def train_epoch(self, optimizer, criterion, x, y):
         optimizer.zero_grad()
@@ -71,19 +89,3 @@ class NeuralNetworkClassifier(BaseWordleModel):
             output = self._model(x)
 
         return output.squeeze().numpy()
-
-
-class NeuralNetwork(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.network = nn.Sequential(
-            nn.Linear(314, 256),
-            nn.ReLU(),
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Linear(128, 26),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        return self.network(x)

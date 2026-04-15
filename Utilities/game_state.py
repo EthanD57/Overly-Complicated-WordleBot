@@ -12,10 +12,10 @@ class GameState:
 
 
     def reset(self) -> None:
+        self.remaining_words_indices = list(range(len(self.master_list)))
         self.remaining_words = self.master_list
-        self.remaining_words_indices = list(range(len(word_list)))
         self.guess_count = 0
         self.gray_letters = set()
         self.green_letters = {}
         self.yellow_letters = set()
-        self.scored_rounds = dict
+        self.scored_rounds = dict()

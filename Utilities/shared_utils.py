@@ -41,6 +41,7 @@ def score_guess(correct_word: str, guess: str) -> list[int]:
     yellow/green (matching real Wordle behavior).
 
     Args:
+        game_state (GameState): GameState object representing the current game state for the bot
         correct_word (str): The Correct Word for the Wordle Game
         guess (str): The Guess From the Bot
 
