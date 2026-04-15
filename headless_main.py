@@ -5,7 +5,9 @@ import pickle as pkl
 import argparse
 
 from Utilities.shared_utils import filter_words, score_guess, calculate_entropy_pattern_table
-from ML import entropy_maximization_bot, random_forest_classifier, random_forest_regressor
+from ML import entropy_maximization_bot, random_forest_classifier, random_forest_regressor, deep_q_network, \
+    neural_network_classifier
+
 
 def main(game_instance: wordle.Wordle):
     """
@@ -22,19 +24,13 @@ def main(game_instance: wordle.Wordle):
     """
     parser = argparse.ArgumentParser(description="Wordle Bot Runner")
 
-    # Add arguments
-    parser.add_argument('--word', type=str, required=True, help='The word to guess')
-    parser.add_argument('--num_games', type=int, default=1, help='Number of games to run')
+    parser.add_argument('--word', type=str, required=False, help='The word to guess')
     parser.add_argument('--model', type=str, default='entropy_maximization',
                         help='Which model to use')
 
-    # Parse the arguments
     args = parser.parse_args()
 
-    # Now you can use them
-    print(f"Word: {args.word}")
-    print(f"Games: {args.num_games}")
-    print(f"Model: {args.model}")
+
 
 
 def _play_game(game_instance: wordle.Wordle, model: int, word=""):
@@ -60,14 +56,14 @@ def _play_game(game_instance: wordle.Wordle, model: int, word=""):
         if guess == word:  ##Correct Word Guessed
             guess_count += 1
             guesses.append([guess, score_guess(word, guess)])
-            return ""
+            break
         else:  ##Incorrect Word Guessed. Update Game State and Send Score
             score = score_guess(word, guess)
             guesses.append([guess, score])
             ##Give the Bot Its Score for the Round
             filter_words(guess, score, bot.game_state)
             guess_count += 1
-    return "Word Not Guessed :("
+    return guesses
 
 
 def _load_pattern_table():
@@ -95,11 +91,13 @@ def _initialize_bot(game_instance: wordle.Wordle, model: int = 1):
         bot = random_forest_regressor.RandomForestRegressorModel(game_instance.word_list)
         bot.train()
         return bot
-    else:
-        from ML.neural_net import neural_network_classifier
+    elif model == 4:
         bot = neural_network_classifier.NeuralNetworkClassifier(game_instance.word_list)
         bot.train()
-        return bot
+    else:
+        bot = deep_q_network.DQNBot(game_instance.word_list)
+        bot.train()
+    return bot
 
 
 if __name__ == '__main__':
