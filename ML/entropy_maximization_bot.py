@@ -1,4 +1,7 @@
+from pathlib import Path
+
 import numpy as np
+import pickle as pkl
 
 from Utilities.game_state import GameState
 from Utilities.shared_utils import get_high_frequency_candidates
@@ -7,6 +10,7 @@ class EntropyBot:
     def __init__(self, word_list: list[str], pattern_table: np.ndarray) -> None:
         self.game_state = GameState(word_list)
         self.pattern_table = pattern_table
+
 
     def calculate_entropy(self, guess: str) -> float:
         """

@@ -4,6 +4,7 @@ from random import choice
 import wordle
 from multiprocessing import Pool
 import click
+import pickle as pkl
 
 from Utilities.data_collector import TrainingDataCollector
 from Utilities.shared_utils import filter_words, score_guess, calculate_entropy_pattern_table
@@ -244,13 +245,21 @@ def _gather_testing_data(game_instance: wordle.Wordle, game_count, process_count
 
 def get_pattern_table(game_instance: wordle.Wordle):
     global worker_pattern_table
+    path = Path("ML/saved_models/pattern_table.pkl")
+
+    if path.exists():
+        with open(path, 'rb') as f:
+            worker_pattern_table = pkl.load(f)
+
     if worker_pattern_table is None or game_instance.needRecompute:
         pattern_table = calculate_entropy_pattern_table(game_instance.word_list)
         worker_pattern_table = pattern_table
         game_instance.needRecompute = False
-        return pattern_table
-    else:
-        return worker_pattern_table
+
+    with open(path, 'wb') as f:
+        pkl.dump(worker_pattern_table, f)
+
+    return worker_pattern_table
 
 
 def initialize_bot(game_instance: wordle.Wordle, model: int = 1):
