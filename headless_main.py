@@ -2,18 +2,12 @@ from pathlib import Path
 from random import choice
 import wordle
 import pickle as pkl
+import argparse
 
 from Utilities.shared_utils import filter_words, score_guess, calculate_entropy_pattern_table
 from ML import entropy_maximization_bot, random_forest_classifier, random_forest_regressor
 
-TESTING_MODE = False
-
-#I know I'm going to get IDE warnings about this, but leaving it as None for now is fine. It will always get assigned
-worker_pattern_table = None
-model_options = ["Entropy Maximization", "Random Forest Classifier", "Random Forest Regressor", "Neural Network Classifier"]\
-
-
-def _startup(game_instance: wordle.Wordle):
+def main(game_instance: wordle.Wordle):
     """
     Initialize The Wordle Game According to User Input
     The User Has the Option to Choose a Word or Have one
@@ -26,23 +20,21 @@ def _startup(game_instance: wordle.Wordle):
         None
 
     """
-    model = 1
+    parser = argparse.ArgumentParser(description="Wordle Bot Runner")
 
+    # Add arguments
+    parser.add_argument('--word', type=str, required=True, help='The word to guess')
+    parser.add_argument('--num_games', type=int, default=1, help='Number of games to run')
+    parser.add_argument('--model', type=str, default='entropy_maximization',
+                        help='Which model to use')
 
-def _rand_word(words: list[str]):
-    """
-    Returns a Random Word From The Word List
+    # Parse the arguments
+    args = parser.parse_args()
 
-    Args:
-        words (list[str]): A list containing all valid words for the game
-
-    Returns:
-        str: The randomly chosen word
-
-    """
-    word = choice(tuple(words))
-    if not TESTING_MODE: print(f"Random Word Chosen is {word}")
-    return word
+    # Now you can use them
+    print(f"Word: {args.word}")
+    print(f"Games: {args.num_games}")
+    print(f"Model: {args.model}")
 
 
 def _play_game(game_instance: wordle.Wordle, model: int, word=""):
@@ -59,7 +51,7 @@ def _play_game(game_instance: wordle.Wordle, model: int, word=""):
 
     """
 
-    bot = initialize_bot(game_instance, model)
+    bot = _initialize_bot(game_instance, model)
 
     guess_count = 0
     guesses = []
@@ -78,8 +70,40 @@ def _play_game(game_instance: wordle.Wordle, model: int, word=""):
     return "Word Not Guessed :("
 
 
+def _load_pattern_table():
+    path = Path("ML/saved_models/pattern_table.pkl")
+
+    if path.exists():
+        with open(path, 'rb') as f:
+            worker_pattern_table = pkl.load(f)
+    else:
+        print("No pattern_table File Exists!")
+        print("Crashing for safety!")
+        exit()
+
+    return worker_pattern_table
+
+
+def _initialize_bot(game_instance: wordle.Wordle, model: int = 1):
+    if model == 1:
+        return entropy_maximization_bot.EntropyBot(game_instance.word_list, _load_pattern_table())
+    elif model == 2:
+        bot = random_forest_classifier.RandomForestClassifierModel(game_instance.word_list)
+        bot.train()
+        return bot
+    elif model == 3:
+        bot = random_forest_regressor.RandomForestRegressorModel(game_instance.word_list)
+        bot.train()
+        return bot
+    else:
+        from ML.neural_net import neural_network_classifier
+        bot = neural_network_classifier.NeuralNetworkClassifier(game_instance.word_list)
+        bot.train()
+        return bot
+
+
 if __name__ == '__main__':
     word_list_path = Path("words.txt")
     game = wordle.Wordle(word_list_path)
     print(f"Successfully Loaded {len(game.word_list)} Words Into The Game!\n\n")
-    _startup(game)
+    main(game)
