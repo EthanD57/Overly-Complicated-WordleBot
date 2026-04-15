@@ -7,14 +7,16 @@ import click
 
 from Utilities.data_collector import TrainingDataCollector
 from Utilities.shared_utils import filter_words, score_guess, calculate_entropy_pattern_table
-from ML import entropy_maximization_bot, random_forest_classifier, random_forest_regressor
+from ML import (entropy_maximization_bot, random_forest_classifier,
+                random_forest_regressor, deep_q_network, neural_network_classifier)
 from Utilities import display
 
 TESTING_MODE = False
 
 #I know I'm going to get IDE warnings about this, but leaving it as None for now is fine. It will always get assigned
 worker_pattern_table = None
-model_options = ["Entropy Maximization", "Random Forest Classifier", "Random Forest Regressor", "Neural Network Classifier"]\
+model_options = ["Entropy Maximization", "Random Forest Classifier", "Random Forest Regressor",
+                 "Neural Network Classifier", "Deep Q-Network"]
 
 
 def _startup(game_instance: wordle.Wordle):
@@ -46,9 +48,12 @@ def _startup(game_instance: wordle.Wordle):
             TESTING_MODE = True
             testing_range = click.prompt("Enter the Number of Tests You Would Like to Run",
                                          type=click.IntRange(1, ), show_choices=False)
-            processes = click.prompt("How Many Parallel Processes Should be Used",
-                                     type=click.IntRange(1, 20), show_choices=True)
-            _test_bot_parallel(game_instance, testing_range, processes, model)
+            if model < 4:
+                processes = click.prompt("How Many Parallel Processes Should be Used",
+                                         type=click.IntRange(1, 20), show_choices=True)
+                _test_bot(game_instance, testing_range, processes, model)
+
+            else: _test_non_parallel_models(game_instance, testing_range, model)
             print("Testing Complete! Returning To Main Menu...")
         elif usr_input == "4":  #Collect Training Data
             testing_range = click.prompt("Enter the Number of Games to Collect Data From",
@@ -62,9 +67,10 @@ def _startup(game_instance: wordle.Wordle):
                   "1. Entropy Maximization\n"
                   "2. Random Forest Classifier\n"
                   "3. Random Forest Regressor\n"
-                  "4. Neural Network Classifier\n")
+                  "4. Neural Network Classifier\n"
+                  "5. Deep Q-Network\n")
             model = click.prompt("Enter the Model You Would Like to Use",
-                                 type=click.IntRange(1, 4), show_choices=False)
+                                 type=click.IntRange(1, 5), show_choices=False)
         elif usr_input == 'q':
             exit()
         else:
@@ -94,6 +100,7 @@ def _handle_user_word(instance: wordle.Wordle):
         else:
             instance.word_list.append(word)
             instance.needRecompute = True
+            return word
 
 
 def _rand_word(words: list[str]):
@@ -154,7 +161,7 @@ def init_worker(pattern_table):
     worker_pattern_table = pattern_table
 
 
-def _test_bot_parallel(game_instance: wordle.Wordle, testing_runs: int, processes=2, model: int = 1):
+def _test_bot(game_instance: wordle.Wordle, testing_runs: int, processes=2, model: int = 1):
     correct_games = 0
     incorrect_games = 0
     guess_counts = []
@@ -178,6 +185,21 @@ def _test_bot_parallel(game_instance: wordle.Wordle, testing_runs: int, processe
     print(f"Incorrect Games Percentage: {round((incorrect_games / testing_runs) * 100, 2)}%")
     print("Average Number of Guesses: ", round(sum(guess_counts) / len(guess_counts), 2))
 
+def _test_non_parallel_models(game_instance: wordle.Wordle, testing_runs: int, model: int = 1):
+    correct_games = 0
+    incorrect_games = 0
+    guess_counts = []
+    if model != 1: initialize_bot(game_instance, model)
+    for i in range(testing_runs):
+        guess_count = _run_single_game((_rand_word(game_instance.word_list), game_instance.word_list, model))
+        if guess_count < 6:
+            guess_counts.append(guess_count)
+            correct_games += 1
+        else:
+            incorrect_games += 1
+    print(f"\n\nCorrect Games Percentage: {round((correct_games / testing_runs) * 100, 2)}%")
+    print(f"Incorrect Games Percentage: {round((incorrect_games / testing_runs) * 100, 2)}%")
+    print("Average Number of Guesses: ", round(sum(guess_counts) / len(guess_counts), 2))
 
 def _run_single_game(args):
     word, word_list, model = args
@@ -188,9 +210,10 @@ def _run_single_game(args):
         bot = random_forest_classifier.RandomForestClassifierModel(word_list)
     elif model == 3:
         bot = random_forest_regressor.RandomForestRegressorModel(word_list)
-    else:
-        from ML.neural_net import neural_network_classifier
+    elif model == 4:  #Should NEVER get here
         bot = neural_network_classifier.NeuralNetworkClassifier(word_list)
+    else:
+        bot = deep_q_network.DQNBot(word_list)
 
     if model != 1 and not bot.is_trained: bot.train()
     guess_count = 0
@@ -241,11 +264,13 @@ def initialize_bot(game_instance: wordle.Wordle, model: int = 1):
         bot = random_forest_regressor.RandomForestRegressorModel(game_instance.word_list)
         bot.train()
         return bot
-    else:
-        from ML.neural_net import neural_network_classifier
+    elif model == 4:
         bot = neural_network_classifier.NeuralNetworkClassifier(game_instance.word_list)
         bot.train()
-        return bot
+    else:
+        bot = deep_q_network.DQNBot(game_instance.word_list)
+        bot.train()
+    return bot
 
 
 if __name__ == '__main__':
