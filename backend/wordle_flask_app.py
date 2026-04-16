@@ -38,7 +38,7 @@ def play_game():
     Example: GET /play?word=crane&model=entropy_maximization
     """
     try:
-        word = request.args.get('word', default=None, type=str)
+        word = request.args.get('word', default=None)
         model = request.args.get('model', default='entropy_maximization', type=str)
 
         # Validate model
@@ -46,7 +46,9 @@ def play_game():
             model = 'entropy_maximization'
 
         cmd = ['python', 'headless_main.py', '--model', model]
-        cmd.extend(['--word', word.lower()])
+
+        if word is not None:
+            cmd.extend(['--word', word.lower()])
 
         # Run the headless bot
         result = subprocess.run(

@@ -24,7 +24,7 @@ def main():
     }
 
     parser = argparse.ArgumentParser(description="Wordle Bot Runner")
-    parser.add_argument('--word', type=str, required=False, help='The word to guess')
+    parser.add_argument('--word', type=str, required=False, default=None, help='The word to guess')
     parser.add_argument('--model', type=str, default='entropy_maximization',
                         help='Which model to use', choices=list(models.keys()))
 
@@ -51,10 +51,13 @@ def main():
         game = wordle.Wordle(word_list_path)
 
         # Get the word (random if not specified)
-        if args.word and args.word.lower() in game.word_list:
-            target_word = args.word.lower()
-        else:
+        if args.word is None:
             target_word = choice(game.word_list)
+        elif args.word.lower() not in game.word_list:
+            target_word = choice(game.word_list)
+        else:
+            target_word = args.word
+
         # Checking the word length is NOT required here because this will NOT allow users
         # to enter their own chosen words for performance reasons. If the word list doesn't contain
         # the word sent my the website, it simply picks a random word. This sanitizes input from the website.
