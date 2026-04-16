@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - wordle-bot
+    networks:
+      - portfolio-network
+
+  wordle-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.wordle
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    networks:
+      - portfolio-network
+
+networks:
+  portfolio-network:
+    driver: bridge
