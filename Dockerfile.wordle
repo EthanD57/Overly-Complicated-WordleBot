@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements from backend directory
-COPY backend/requirements.txt .
+COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
@@ -20,8 +20,8 @@ COPY words.txt .
 COPY ML/ ML/
 COPY Utilities/ Utilities/
 
-# Copy Flask app from backend directory
-COPY backend/wordle_flask_app.py .
+# Copy Flask app
+COPY wordle_flask_app.py .
 
 # Expose port
 EXPOSE 5000
@@ -30,5 +30,6 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:5000/health')"
 
-# Run Flask app
-CMD ["python", "wordle_flask_app.py"]
+# Run Flask app via Gunicorn WSGI server
+# Shell form required so Railway's $PORT env var is expanded at runtime
+CMD gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 60 wordle_flask_app:app
