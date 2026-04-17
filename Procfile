@@ -1,1 +1,0 @@
-web: gunicorn wordle_flask_app:app --max-requests 10 --max-requests-jitter 3 --workers 2
