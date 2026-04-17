@@ -255,3 +255,4 @@ http-client.private.env.json
 /.idea/WordleBot.iml
 !/.venv/
 !/.venv/
+ML/saved_models/

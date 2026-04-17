@@ -1,5 +1,5 @@
 [build]
-buildCommand = "apt-get install -y git-lfs && git lfs pull && pip install -r requirements.txt"
+buildCommand = "pip install -r requirements.txt"
 
 [deploy]
 startCommand = "gunicorn wordle_flask_app:app --max-requests 10 --max-requests-jitter 3 --workers 2"
