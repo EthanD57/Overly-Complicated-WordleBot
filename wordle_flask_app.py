@@ -1,8 +1,3 @@
-"""
-Flask server wrapper for headless Wordle bot.
-Exposes /play endpoint that accepts GET requests with query parameters.
-"""
-
 from flask import Flask, request, jsonify
 import subprocess
 import json

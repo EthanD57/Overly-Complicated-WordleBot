@@ -43,10 +43,10 @@ class EntropyBot:
 
         """
 
-        # if self.game_state.guess_count == 0:
-        #     self.game_state.guess_count += 1  # Increment the GameState guess count
-        #     return "crane"
-        #
+        if self.game_state.guess_count == 0:
+            self.game_state.guess_count += 1  # Increment the GameState guess count
+            return "crane"
+
         self.game_state.guess_count += 1  # Increment the GameState guess count
         remaining_words_length = len(self.game_state.remaining_words)
 
@@ -56,20 +56,20 @@ class EntropyBot:
         best_word = ""
         max_entropy = -1
 
-        #If we have a lot of possible words, we just check the top 300 words with high-frequency letters
+        #If it has a lot of possible words, it just checks the top 300 words with high-frequency letters
         if remaining_words_length > 20:
             guess_candidates = get_high_frequency_candidates(self.game_state, 300, self.game_state.master_list)
         else:
-            #Below 20 remaining words is dangerous because we can get stuck in traps like LIGHT, MIGHT, SIGHT, etc.
-            #To combat this, we allow the bot to make a sacrificial guess like "MILES" to rule out LIGHT, MIGHT, and SIGHT
+            #Below 20 remaining words is dangerous because the bot can get stuck in traps like LIGHT, MIGHT, SIGHT, etc.
+            #To combat this, allow the bot to make a sacrificial guess like "MILES" to rule out LIGHT, MIGHT, and SIGHT
             guess_candidates = self.game_state.master_list
 
         for word in guess_candidates:
             entropy = self.calculate_entropy(word)
 
             if word in self.game_state.remaining_words:  #This acts as a tiebreaker because we would PREFER to guess a word
-                entropy += 0.01  #that could actually be the answer. So if both are high-entropy, pick one
-                #that COULD actually be the answer.
+                entropy += 0.01                          #that could actually be the answer. So if both are high-entropy, pick one
+                                                         #that COULD actually be the answer.
 
             if entropy > max_entropy:
                 max_entropy = entropy
