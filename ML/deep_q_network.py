@@ -140,7 +140,7 @@ class DQNBot:
         current_q_values  = self.q_network(states_float)
         current_q = current_q_values.gather(1, actions_long.unsqueeze(1)).squeeze(1)
 
-        with torch.no_grad():  # Don't need gradients for target network
+        with torch.no_grad():
             next_q_values = self.target_network(next_states_float)  # Shape: (batch_size, action_size)
             max_next_q = next_q_values.max(1)[0]  # Shape: (batch_size,)
 
@@ -150,10 +150,10 @@ class DQNBot:
         loss = nn.MSELoss()(current_q, target_q)
 
         # Backpropagation
-        self.optimizer.zero_grad()  # Clear previous gradients
-        loss.backward()  # Compute gradients
+        self.optimizer.zero_grad()
+        loss.backward()
         torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), max_norm=1.0)
-        self.optimizer.step()  # Update weights
+        self.optimizer.step()
 
         # Track training steps and update target network periodically
         self.training_steps += 1

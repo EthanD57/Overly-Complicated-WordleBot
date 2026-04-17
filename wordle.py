@@ -13,4 +13,3 @@ class Wordle:
             exit()
 
         self.needRecompute = True
-
