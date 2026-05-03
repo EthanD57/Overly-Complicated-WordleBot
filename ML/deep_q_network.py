@@ -179,6 +179,7 @@ class DQNBot:
                 print(f"Episode {i + 1}/{num_episodes} | Epsilon: {self.epsilon:.3f} | Loss: {loss:.4f}")
 
         self.is_trained = True
+        self.game_state.reset()
         self.save(self.model_path)
         print("Training complete!")
 

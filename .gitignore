@@ -7,6 +7,10 @@ __pycache__/
 # C extensions
 *.so
 
+#Project Model Files
+*.pkl
+*.pth
+
 # Distribution / packaging
 .Python
 build/
@@ -251,5 +255,7 @@ http-client.private.env.json
 /.idea/modules.xml
 /.idea/vcs.xml
 /.idea/WordleBot.iml
-!/.venv/
+/.idea/.gitignore
+/.idea/inspectionProfiles/Project_Default.xml
+/.idea/Wordle-ML-Implementations.iml
 !/.venv/

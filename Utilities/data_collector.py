@@ -2,6 +2,7 @@ from multiprocessing import Pool
 from random import choice
 import pickle
 import numpy as np
+from pathlib import Path
 
 from ML.entropy_maximization_bot import EntropyBot
 from ML import entropy_maximization_bot
@@ -104,5 +105,7 @@ class TrainingDataCollector:
         for process_data in results:
             self.training_data.extend(process_data)
 
+        path = Path("ML/training_data/wordle_training.pkl")
+        path.parent.mkdir(parents=True, exist_ok=True)
         with open('ML/training_data/wordle_training.pkl', 'wb') as f:
             pickle.dump(self.training_data, f)

@@ -20,13 +20,9 @@ Python 3.11+ recommended.
 pip install -r requirements.txt
 ```
 
-The first run of this program, <b>especially the entropy maximization bot</b>, will take a long time to complete. The 
-pattern table takes a very long time to generate and is directly correlated to the word list length. Approximately 1.7
-billion operations are completed for this. <br><br>
-You might be asking yourself: "Why did you code the bot this way?" 
-<br> The generation of thousands of testing runs (I did 10,000) was taking far too long. ~5 minutes on the first 
-run is better than an hour for generating testing data. 
-<br><br>
+For your convenience, a .zip file containing the pattern table for the entropy maximization bot is provided. I 
+<i>highly</i> recommend that you use this. Running the program without this file will trigger a rebuild of the whole 
+table which takes about 10 minutes. Extract the pattern_table.zip file within the "saved_models" directory.<br><br>
 If you are interested in seeing each bot in action but do not have the time to commit to training, feel free to check out
 my personal portfolio where the bot is hosted: www.defilippi.dev
 <br>

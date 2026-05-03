@@ -217,6 +217,7 @@ def get_pattern_table(game_instance: wordle.Wordle):
         worker_pattern_table = calculate_entropy_pattern_table(game_instance.word_list)
         game_instance.needRecompute = False
 
+    path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, 'wb') as f:
         pkl.dump(worker_pattern_table, f)
 
