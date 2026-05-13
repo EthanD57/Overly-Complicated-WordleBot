@@ -5,6 +5,7 @@ import numpy as np
 from numpy import ndarray
 
 from ML.base_model import BaseWordleModel
+from Utilities.shared_utils import TrainingDataMissingError
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.multioutput import MultiOutputClassifier
 from Utilities.game_state import GameState
@@ -26,8 +27,11 @@ class RandomForestClassifierModel(BaseWordleModel):
             self.is_trained = True
             return
 
-        with open('ML/training_data/wordle_training.pkl', 'rb') as f:
-            training_data = pickle.load(f)
+        try:
+            with open('ML/training_data/wordle_training.pkl', 'rb') as f:
+                training_data = pickle.load(f)
+        except FileNotFoundError:
+            raise TrainingDataMissingError("Training data not found. Please collect data before training.")
 
         print("This bot isn't trained yet! Training...")
         x = np.array([example[0] for example in training_data])

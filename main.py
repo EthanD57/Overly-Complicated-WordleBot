@@ -7,9 +7,11 @@ import click
 import pickle as pkl
 
 from Utilities.data_collector import TrainingDataCollector
-from Utilities.shared_utils import filter_words, score_guess, calculate_entropy_pattern_table, MAX_GUESSES
+from Utilities.shared_utils import (filter_words, score_guess, calculate_entropy_pattern_table,
+                                    MAX_GUESSES, TrainingDataMissingError)
 from ML import (entropy_maximization_bot, random_forest_classifier,
                 random_forest_regressor, deep_q_network, neural_network_classifier)
+
 from Utilities import display
 
 TESTING_MODE = False
@@ -26,42 +28,45 @@ def _startup(game_instance: wordle.Wordle):
         display.print_menu(model, model_options)
         usr_input = click.prompt("Please Choose an Option", type=click.Choice(["1", "2", "3", "4", "5", "q"]),
                                  show_choices=False)
-        if usr_input == "1":
-            usr_word = _handle_user_word(game_instance)
-            print(_play_game(game_instance, model, usr_word))
-        elif usr_input == "2":
-            rnd_word = _rand_word(game_instance.word_list)
-            print(_play_game(game_instance, model, rnd_word))
-        elif usr_input == "3":
-            global TESTING_MODE
-            TESTING_MODE = True
-            testing_range = click.prompt("Enter the Number of Tests You Would Like to Run",
-                                         type=click.IntRange(1, ), show_choices=False)
-            if model < 4:
+        try:
+            if usr_input == "1":
+                usr_word = _handle_user_word(game_instance)
+                print(_play_game(game_instance, model, usr_word))
+            elif usr_input == "2":
+                rnd_word = _rand_word(game_instance.word_list)
+                print(_play_game(game_instance, model, rnd_word))
+            elif usr_input == "3":
+                global TESTING_MODE
+                TESTING_MODE = True
+                testing_range = click.prompt("Enter the Number of Tests You Would Like to Run",
+                                             type=click.IntRange(1, ), show_choices=False)
+                if model < 4:
+                    processes = click.prompt("How Many Parallel Processes Should be Used",
+                                             type=click.IntRange(1, 20), show_choices=True)
+                    _test_bot(game_instance, testing_range, processes, model)
+                else:
+                    _test_non_parallel_models(game_instance, testing_range, model)
+                print("Testing Complete! Returning To Main Menu...")
+            elif usr_input == "4":
+                testing_range = click.prompt("Enter the Number of Games to Collect Data From",
+                                             type=click.IntRange(1, ), show_choices=False)
                 processes = click.prompt("How Many Parallel Processes Should be Used",
                                          type=click.IntRange(1, 20), show_choices=True)
-                _test_bot(game_instance, testing_range, processes, model)
-            else:
-                _test_non_parallel_models(game_instance, testing_range, model)
-            print("Testing Complete! Returning To Main Menu...")
-        elif usr_input == "4":
-            testing_range = click.prompt("Enter the Number of Games to Collect Data From",
-                                         type=click.IntRange(1, ), show_choices=False)
-            processes = click.prompt("How Many Parallel Processes Should be Used",
-                                     type=click.IntRange(1, 20), show_choices=True)
-            _gather_testing_data(game_instance, testing_range, processes)
-            print("Training Data Collected! Returning To Main Menu...")
-        elif usr_input == "5":
-            print("Model Options:\n"
-                  "1. Entropy Maximization\n"
-                  "2. Random Forest Classifier\n"
-                  "3. Random Forest Regressor\n"
-                  "4. Neural Network Classifier\n"
-                  "5. Deep Q-Network\n")
-            model = click.prompt("Enter the Model You Would Like to Use",
-                                 type=click.IntRange(1, 5), show_choices=False)
-        elif usr_input == 'q':
-            exit()
+                _gather_testing_data(game_instance, testing_range, processes)
+                print("Training Data Collected! Returning To Main Menu...")
+            elif usr_input == "5":
+                print("Model Options:\n"
+                      "1. Entropy Maximization\n"
+                      "2. Random Forest Classifier\n"
+                      "3. Random Forest Regressor\n"
+                      "4. Neural Network Classifier\n"
+                      "5. Deep Q-Network\n")
+                model = click.prompt("Enter the Model You Would Like to Use",
+                                     type=click.IntRange(1, 5), show_choices=False)
+            elif usr_input == 'q':
+                exit()
+        except TrainingDataMissingError as e:
+            print(f"\nError: {e}\nReturning to Main Menu...\n")
 
 
 def _handle_user_word(instance: wordle.Wordle) -> str:
@@ -72,12 +77,13 @@ def _handle_user_word(instance: wordle.Wordle) -> str:
     pattern table recomputation so the entropy bot remains consistent.
     """
     while True:
-        word = click.prompt("Please Enter a 5-Character String or Enter 'q' to Exit", type=str)
+        word: str = click.prompt("Please Enter a 5-Character String or Enter 'q' to Exit", type=str).lower()
         if word == "q":
             exit()
         if len(word) != 5:
+            print("Word must be 5 characters long!")
             continue
-        if word not in game.word_list:
+        if word not in instance.word_list:
             instance.needRecompute = True
             instance.word_list.append(word)
         return word
@@ -92,7 +98,10 @@ def _rand_word(words: list[str]) -> str:
 
 def _play_game(game_instance: wordle.Wordle, model: int, word: str = "") -> str:
     display.print_game_start()
-    bot = initialize_bot(game_instance, model)
+    try:
+        bot = initialize_bot(game_instance, model)
+    except TrainingDataMissingError:
+        raise
 
     guess_count = 0
     guesses = []
@@ -131,7 +140,10 @@ def _test_bot(game_instance: wordle.Wordle, testing_runs: int, processes: int = 
 
     with Pool(processes, initializer=init_worker, initargs=(pattern_table,)) as pool:
         args = [(_rand_word(game_instance.word_list), game_instance.word_list, model) for _ in range(testing_runs)]
-        results = pool.map(_run_single_game, args)
+        try:
+            results = pool.map(_run_single_game, args)
+        except TrainingDataMissingError:
+            raise
         for result in results:
             if result > MAX_GUESSES - 1:
                 incorrect_games += 1
@@ -148,15 +160,19 @@ def _test_non_parallel_models(game_instance: wordle.Wordle, testing_runs: int, m
     correct_games = 0
     incorrect_games = 0
     guess_counts = []
-    if model != 1:
-        initialize_bot(game_instance, model)
-    for i in range(testing_runs):
-        guess_count = _run_single_game((_rand_word(game_instance.word_list), game_instance.word_list, model))
-        if guess_count < MAX_GUESSES:
-            guess_counts.append(guess_count)
-            correct_games += 1
-        else:
-            incorrect_games += 1
+    try:
+        if model != 1:
+            initialize_bot(game_instance, model)
+        for i in range(testing_runs):
+            guess_count = _run_single_game((_rand_word(game_instance.word_list), game_instance.word_list, model))
+            if guess_count < MAX_GUESSES:
+                guess_counts.append(guess_count)
+                correct_games += 1
+            else:
+                incorrect_games += 1
+    except TrainingDataMissingError:
+        raise
+
     print(f"\n\nCorrect Games Percentage: {round((correct_games / testing_runs) * 100, 2)}%")
     print(f"Incorrect Games Percentage: {round((incorrect_games / testing_runs) * 100, 2)}%")
     print("Average Number of Guesses: ", round(sum(guess_counts) / len(guess_counts), 2))
@@ -174,11 +190,14 @@ def _run_single_game(args) -> int:
     elif model == 4:  # Neural net cannot run in parallel; should never reach here via _test_bot
         bot = neural_network_classifier.NeuralNetworkClassifier(word_list)
     else:
-        bot = deep_q_network.DQNBot(word_list)
+        bot = deep_q_network.DQNBot(word_list) # Neural net cannot run in parallel; should never reach here via _test_bot
 
-    if model != 1 and not bot.is_trained:
-        bot.train()
 
+    try:
+        if model != 1 and not bot.is_trained:
+            bot.train()
+    except TrainingDataMissingError:
+        raise
     guess_count = 0
     while guess_count < MAX_GUESSES:
         guess = bot.make_guess()
@@ -229,18 +248,17 @@ def initialize_bot(game_instance: wordle.Wordle, model: int = 1):
         return entropy_maximization_bot.EntropyBot(game_instance.word_list, get_pattern_table(game_instance))
     elif model == 2:
         bot = random_forest_classifier.RandomForestClassifierModel(game_instance.word_list)
-        bot.train()
-        return bot
     elif model == 3:
         bot = random_forest_regressor.RandomForestRegressorModel(game_instance.word_list)
-        bot.train()
-        return bot
     elif model == 4:
         bot = neural_network_classifier.NeuralNetworkClassifier(game_instance.word_list)
-        bot.train()
     else:
         bot = deep_q_network.DQNBot(game_instance.word_list)
+    try:
         bot.train()
+    except TrainingDataMissingError:
+        raise
+
     return bot
 
 

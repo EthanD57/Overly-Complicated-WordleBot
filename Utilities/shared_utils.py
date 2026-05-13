@@ -199,3 +199,7 @@ def calculate_entropy_pattern_table(word_list: list[str]) -> np.ndarray:
             pattern_matrix[i, j] = score_int
 
     return pattern_matrix
+
+class TrainingDataMissingError(Exception):
+    """Exception raised when a model is asked to train, but no training data is found."""
+    pass

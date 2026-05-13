@@ -7,6 +7,7 @@ from numpy import ndarray
 from ML.base_model import BaseWordleModel
 from sklearn.ensemble import RandomForestRegressor
 from Utilities.game_state import GameState
+from Utilities.shared_utils import TrainingDataMissingError
 
 _N_ESTIMATORS = 100
 
@@ -25,8 +26,11 @@ class RandomForestRegressorModel(BaseWordleModel):
             return
 
         print("Training model...")
-        with open('ML/training_data/wordle_training.pkl', 'rb') as f:
-            training_data = pickle.load(f)
+        try:
+            with open('ML/training_data/wordle_training.pkl', 'rb') as f:
+                training_data = pickle.load(f)
+        except FileNotFoundError:
+            raise TrainingDataMissingError("Training data not found. Please collect data before training.")
 
         x = np.array([example[0] for example in training_data])
         y = np.array([example[1] for example in training_data])

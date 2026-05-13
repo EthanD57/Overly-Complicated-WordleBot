@@ -44,10 +44,11 @@ class EntropyBot:
         self.game_state.guess_count += 1
         remaining = self.game_state.remaining_words
 
-        if len(remaining) == 1:
+        word_list_size = len(remaining)
+        if word_list_size == 1:
             return remaining[0]
 
-        if len(remaining) > SACRIFICIAL_THRESHOLD:
+        if word_list_size > SACRIFICIAL_THRESHOLD:
             candidates = get_high_frequency_candidates(self.game_state, HIGH_FREQ_TOP_N,
                                                        self.game_state.master_list)
         else:
