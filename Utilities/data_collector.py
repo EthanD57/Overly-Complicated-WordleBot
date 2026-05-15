@@ -1,4 +1,5 @@
 from multiprocessing import Pool
+from multiprocessing.shared_memory import SharedMemory
 from random import choice
 import pickle
 import numpy as np
@@ -15,6 +16,7 @@ from Utilities.shared_utils import (calculate_normalized_letter_freq, score_gues
 _ENTROPY_LABEL_POOL_SIZE = 200
 
 worker_pattern_table = None
+_worker_shm = None
 
 
 def create_training_labels(bot: entropy_maximization_bot.EntropyBot, k: int) -> np.ndarray:
@@ -75,9 +77,10 @@ def _collect_games_worker(args: tuple) -> list:
     return training_data
 
 
-def init_worker(pattern_table):
-    global worker_pattern_table
-    worker_pattern_table = pattern_table
+def init_worker(shm_name, shape, dtype):
+    global worker_pattern_table, _worker_shm
+    _worker_shm = SharedMemory(name=shm_name)
+    worker_pattern_table = np.ndarray(shape, dtype=dtype, buffer=_worker_shm.buf)
 
 
 class TrainingDataCollector:
@@ -98,9 +101,16 @@ class TrainingDataCollector:
         games_per_process = num_games // processes
         args = [(games_per_process, k, self.word_list) for _ in range(processes)]
 
-        with Pool(processes=processes, initializer=init_worker,
-                  initargs=(self.entropy_pattern_table,)) as pool:
-            results = pool.map(_collect_games_worker, args)
+        shm = SharedMemory(create=True, size=self.entropy_pattern_table.nbytes)
+        shared = np.ndarray(self.entropy_pattern_table.shape, dtype=self.entropy_pattern_table.dtype, buffer=shm.buf)
+        np.copyto(shared, self.entropy_pattern_table)
+        try:
+            with Pool(processes=processes, initializer=init_worker,
+                      initargs=(shm.name, self.entropy_pattern_table.shape, self.entropy_pattern_table.dtype)) as pool:
+                results = pool.map(_collect_games_worker, args)
+        finally:
+            shm.close()
+            shm.unlink()
 
         for process_data in results:
             self.training_data.extend(process_data)

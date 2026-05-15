@@ -3,8 +3,10 @@ from pathlib import Path
 from random import choice
 import wordle
 from multiprocessing import Pool
+from multiprocessing.shared_memory import SharedMemory
 import click
 import pickle as pkl
+import numpy as np
 
 from Utilities.data_collector import TrainingDataCollector
 from Utilities.shared_utils import (filter_words, score_guess, calculate_entropy_pattern_table,
@@ -18,6 +20,7 @@ TESTING_MODE = False
 
 # Assigned lazily on first use; always set before any worker reads it.
 worker_pattern_table = None
+_worker_shm = None
 model_options = ["Entropy Maximization", "Random Forest Classifier", "Random Forest Regressor",
                  "Neural Network Classifier", "Deep Q-Network"]
 
@@ -122,34 +125,47 @@ def _play_game(game_instance: wordle.Wordle, model: int, word: str = "") -> str:
     return "Word Not Guessed :("
 
 
-def init_worker(pattern_table):
-    global worker_pattern_table
-    worker_pattern_table = pattern_table
+def init_worker(shm_name, shape, dtype):
+    global worker_pattern_table, _worker_shm
+    if shm_name is None:
+        return
+    _worker_shm = SharedMemory(name=shm_name)
+    worker_pattern_table = np.ndarray(shape, dtype=dtype, buffer=_worker_shm.buf)
 
 
 def _test_bot(game_instance: wordle.Wordle, testing_runs: int, processes: int = 2, model: int = 1):
     correct_games = 0
     incorrect_games = 0
     guess_counts = []
-    pattern_table = None
+    shm = None
 
     if model != 1:
         initialize_bot(game_instance, model)
+        pool_init_args = (None, None, None)
     else:
         pattern_table = get_pattern_table(game_instance)
+        shm = SharedMemory(create=True, size=pattern_table.nbytes)
+        shared = np.ndarray(pattern_table.shape, dtype=pattern_table.dtype, buffer=shm.buf)
+        np.copyto(shared, pattern_table)
+        pool_init_args = (shm.name, pattern_table.shape, pattern_table.dtype)
 
-    with Pool(processes, initializer=init_worker, initargs=(pattern_table,)) as pool:
-        args = [(_rand_word(game_instance.word_list), game_instance.word_list, model) for _ in range(testing_runs)]
-        try:
-            results = pool.map(_run_single_game, args)
-        except TrainingDataMissingError:
-            raise
-        for result in results:
-            if result > MAX_GUESSES - 1:
-                incorrect_games += 1
-            else:
-                correct_games += 1
-                guess_counts.append(result)
+    try:
+        with Pool(processes, initializer=init_worker, initargs=pool_init_args) as pool:
+            args = [(_rand_word(game_instance.word_list), game_instance.word_list, model) for _ in range(testing_runs)]
+            try:
+                results = pool.map(_run_single_game, args)
+            except TrainingDataMissingError:
+                raise
+            for result in results:
+                if result > MAX_GUESSES - 1:
+                    incorrect_games += 1
+                else:
+                    correct_games += 1
+                    guess_counts.append(result)
+    finally:
+        if shm is not None:
+            shm.close()
+            shm.unlink()
 
     print(f"\n\nCorrect Games Percentage: {round((correct_games / testing_runs) * 100, 2)}%")
     print(f"Incorrect Games Percentage: {round((incorrect_games / testing_runs) * 100, 2)}%")
@@ -182,6 +198,7 @@ def _run_single_game(args) -> int:
     word, word_list, model = args
 
     if model == 1:
+        assert worker_pattern_table is not None
         bot = entropy_maximization_bot.EntropyBot(word_list, worker_pattern_table)
     elif model == 2:
         bot = random_forest_classifier.RandomForestClassifierModel(word_list)
